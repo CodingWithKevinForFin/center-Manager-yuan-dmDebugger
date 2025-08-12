@@ -419,6 +419,16 @@ public class FastTablePortlet extends AbstractPortlet implements WebMenuListener
 	public Row addRow(Object... row) {
 		return rows.addRow(row);
 	}
+	
+	public Row addRowAt(int index, Object... row) {
+		return rows.insertRow(index, row);
+	}
+
+	public Row addRowAt(int index, Row row) {
+		rows.add(index, row);
+		return row;
+	}
+	
 	public void clearRows() {
 		getTable().clear();
 		if (this.isEditing()) {
