@@ -142,7 +142,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	public static final String ID_TIMER = "TIMERS";
 	public static final String ID_PROCEDURE = "PROCEDURES";
 	public static final String ID_METHOD = "METHODS";
-	public static final String ID_INDEX = "INDEXES";
+	public static final String ID_INDEX = "SHOW indexes";
 	public static final String ID_DBO = "DBOS";
 
 	private final Object dbsemephore = new Object();
