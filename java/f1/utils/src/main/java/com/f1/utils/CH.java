@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -216,6 +217,14 @@ public class CH {
 		for (int i = 0, l = items.length; i < l; i++)
 			in.add(items[i]);
 		return in;
+	}
+	
+	//ADD, similar to the method above, except that it uses a linkedHashSet
+	/**
+	 * set {@link #s(Object...)} except that it doesnt take a sink. simply returns a newly created and populated {@link HashSet}
+	 */
+	static public <T extends Object> Set<T> ls(T... items) {
+		return s(new LinkedHashSet<T>(), items);
 	}
 
 	/**
