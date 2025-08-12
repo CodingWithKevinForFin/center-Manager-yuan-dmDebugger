@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.f1.ami.amicommon.AmiConsts;
 import com.f1.ami.amicommon.centerclient.AmiCenterClientGetSnapshotRequest;
 import com.f1.ami.amicommon.centerclient.AmiCenterClientGetSnapshotResponse;
 import com.f1.ami.amicommon.centerclient.AmiCenterClientObjectMessage;
@@ -16,6 +17,9 @@ import com.f1.ami.amicommon.msg.AmiCenterRequest;
 import com.f1.ami.amicommon.msg.AmiCenterResponse;
 import com.f1.ami.amicommon.msg.AmiCenterStatusRequest;
 import com.f1.ami.amicommon.msg.AmiCenterStatusResponse;
+import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
+import com.f1.ami.web.centermanager.graph.AmiWebCenterGraphManager;
+import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Center;
 import com.f1.base.Action;
 import com.f1.container.ContainerTools;
 import com.f1.container.ResultMessage;
@@ -261,7 +265,62 @@ public class AmiWebSnapshotManager implements BackendResponseListener {
 		for (int i = 0; i < cached.size(); i++)
 			agentManager.onAmiAdd(cached.get(i));
 		agentManager.getSystemObjectsManager().onActionsProcessed();
+		//process snapshot for center graph manager
+		snapshotCenterGraphManager(action);
 		LH.info(log, logMe(), " Processed snapshot with ", cached.size(), " rows for types: ", action.getTypes(), " seqnum=", action.getSeqNum());
+	}
+	
+	public void snapshotCenterGraphManager(AmiCenterClientSnapshot action) {
+		AmiWebCenterGraphManager gm = this.service.getCenterGraphManager();
+		for (Object o : action.getCached()) {
+			if (o instanceof AmiWebObject_Feed) {
+				AmiWebObject_Feed f = (AmiWebObject_Feed) o;
+				String definedBy = (String) f.getValue("DefinedBy");
+				boolean readonly = !"USER".equals(definedBy);
+				String type = f.getTypeName();
+				String tableName = null;
+				String nodeName = null;
+				switch (type) {
+					case AmiConsts.TYPE_CENTER:
+						nodeName = (String) f.getValue("CenterName");// + "_" + (String) f.getValue("Url");
+						String status = (String) f.getValue("Status");
+						byte statusCode = "NOT_CONNECTED".equals(status) ? AmiCenterGraphNode_Center.DISCONNECTED : AmiCenterGraphNode_Center.CONNECTED;
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_CENTER, nodeName, statusCode, readonly);
+						break;
+					case AmiConsts.TYPE_TABLE:
+						nodeName = (String) f.getValue("TableName");
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_TABLE, nodeName, null, readonly);
+						break;
+					case AmiConsts.TYPE_PROCEDURE:
+						nodeName = (String) f.getValue("ProcedureName");
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_PROCEDURE, nodeName, null, readonly);
+						break;
+					case AmiConsts.TYPE_TIMER:
+						nodeName = (String) f.getValue("TimerName");
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_TIMER, nodeName, null, readonly);
+						break;
+					case AmiConsts.TYPE_TRIGGER:
+						nodeName = (String) f.getValue("TriggerName");
+						tableName = (String) f.getValue("TableName");
+						String triggerType = (String) f.getValue("TriggerType");
+						String correlationData = triggerType + "," + tableName;
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_TRIGGER, nodeName, correlationData, readonly);
+						break;
+					case AmiConsts.TYPE_INDEX:
+						nodeName = (String) f.getValue("IndexName");
+						tableName = (String) f.getValue("TableName");
+						String indexName = AmiCenterManagerUtils.formatIndexNames(tableName, nodeName);
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_INDEX, indexName, tableName, readonly);
+						break;
+					case AmiConsts.TYPE_DBO:
+						nodeName = (String) f.getValue("DboName");
+						gm.onAmiCenterEntityAdded(AmiConsts.TYPE_DBO, nodeName, null, readonly);
+						break;
+					//TODO: How do we get methods from object system manager?
+
+				}
+			}
+		}
 	}
 
 	public AmiWebManager getWebManager() {
