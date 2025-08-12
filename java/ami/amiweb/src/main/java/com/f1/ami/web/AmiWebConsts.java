@@ -243,4 +243,14 @@ public class AmiWebConsts {
 	public static final String DM_TREE_ICON_DIVIDER_V = PREFIX + "dm-tree-icon-divider-v.png";
 	public static final String DM_TREE_ICON_RELATIONSHIP = PREFIX + "dm-tree-icon-relationship.png";
 	public static final String DM_TREE_ICON_ERROR = PREFIX + "dm-tree-icon-error.png";
+	
+	//add center manager graph node icons
+	public static final String CENTER_GRAPH_NODE_CENTER = PREFIX + "graph-node-center.png";//TODO
+	public static final String CENTER_GRAPH_NODE_TABLE = PREFIX + "graph-node-table.png";
+	public static final String CENTER_GRAPH_NODE_TRIGGER = PREFIX + "graph-node-trigger.png";
+	public static final String CENTER_GRAPH_NODE_TIMER = PREFIX + "graph-node-timer.png";
+	public static final String CENTER_GRAPH_NODE_PROCEDURE = PREFIX + "graph-node-procedure.png";
+	public static final String CENTER_GRAPH_NODE_METHOD = PREFIX + "graph-node-method.png";
+	public static final String CENTER_GRAPH_NODE_INDEX = PREFIX + "graph-node-index.png";
+	public static final String CENTER_GRAPH_NODE_DBO = PREFIX + "graph-node-dbo.png";
 }
