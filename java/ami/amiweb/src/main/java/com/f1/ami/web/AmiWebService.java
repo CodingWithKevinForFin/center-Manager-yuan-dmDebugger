@@ -46,6 +46,8 @@ import com.f1.ami.web.amiscript.AmiWebTopCalcFrameStack;
 import com.f1.ami.web.auth.AmiSsoSession;
 import com.f1.ami.web.auth.AmiWebState;
 import com.f1.ami.web.bpipe.plugin.BPIPEPlugin;
+import com.f1.ami.web.centermanager.editors.AmiCenterManagerEditorsManager;
+import com.f1.ami.web.centermanager.graph.AmiWebCenterGraphManager;
 import com.f1.ami.web.charts.AmiWebChartGridPortlet;
 import com.f1.ami.web.charts.AmiWebChartImagesManager;
 import com.f1.ami.web.cloud.AmiWebCloudManager;
@@ -237,6 +239,7 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 	final private Map<String, AmiWebNotification> notificationMetadata = new HashMap<String, AmiWebNotification>();
 
 	//managers
+	final private AmiCenterManagerEditorsManager centerObjectEditors;
 	final private AmiWebManagers agentManager;
 	final private AmiWebVarsManager varsManager;
 	final private PortletManager manager;
@@ -285,6 +288,9 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 	final private AmiWebStatsManager webStatsManager;
 	final private AmiWebUserConfigStore userConfigStore;
 	final private AmiWebGraphManager graphManager;
+	//add center manager
+	final private AmiWebCenterGraphManager centerGraphManager;
+	
 	final private boolean allowJavascriptEmbeddedInHtml;
 
 	private AmiWebCompilerListener EMPTY[] = new AmiWebCompilerListener[0];
@@ -354,6 +360,7 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 		this.amiWebCustomContextMenuEditorsManager = new AmiWebCustomContextMenuEditorsManager(this);
 		this.webStatsManager = new AmiWebStatsManager(this, webstats);
 		this.idleSessionManager = new AmiWebIdleSessionManager(this);
+		this.centerObjectEditors = new AmiCenterManagerEditorsManager(this);
 
 		long eventReaperDefaultTimeout = manager.getTools().getOptional(AmiWebProperties.PROPERTY_AMI_WEB_EVENT_REAPER_DEFAULT_TIMEOUT, SimpleEventReaper.DEFAULT_TIMEOUT);
 		this.eventReaper = new SimpleEventReaper(eventReaperDefaultTimeout);
@@ -406,6 +413,8 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 		initUserFormStyleManager();
 		initUserDialogStyleManager();
 		this.graphManager = new AmiWebGraphManager(this);
+		//add center graph manager
+		this.centerGraphManager = new AmiWebCenterGraphManager(this);
 		clear();
 		this.initManagers();
 		if (dataFilterPlugin != null) {
@@ -1760,6 +1769,12 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 	public AmiWebQueryFormEditorsManager getAmiQueryFormEditorsManager() {
 		return this.amiWebQueryFormEditorsManager;
 	}
+	
+	//add
+
+	public AmiCenterManagerEditorsManager getAmiCenterManagerEditorsManager() {
+		return this.centerObjectEditors;
+	}
 
 	public AmiWebDmEditorsManager getAmiWebDmEditorsManager() {
 		return this.amiWebDmEditorsManager;
@@ -1889,6 +1904,10 @@ public class AmiWebService implements PortletService, AmiWebCenterListener, Port
 
 	public AmiWebGraphManager getGraphManager() {
 		return this.graphManager;
+	}
+	
+	public AmiWebCenterGraphManager getCenterGraphManager() {
+		return this.centerGraphManager;
 	}
 
 	public List<String> getShellHistory() {

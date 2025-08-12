@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import com.f1.ami.amiscript.AmiAbstractMemberMethod;
 import com.f1.ami.web.amiscript.AmiWebAmiScriptDerivedCellParser.AmiWebDeclaredMethodFactory;
+import com.f1.ami.web.centermanager.autocomplete.AmiCenterManagerImdbScriptManager;
 import com.f1.base.IterableAndSize;
 import com.f1.stringmaker.StringTranslator;
 import com.f1.suite.web.menu.WebMenu;
@@ -33,6 +34,7 @@ import com.f1.utils.impl.CharMatcher;
 import com.f1.utils.impl.StringCharReader;
 import com.f1.utils.string.JavaExpressionParser;
 import com.f1.utils.structs.LongKeyMap;
+import com.f1.utils.structs.table.derived.BasicMethodFactory;
 import com.f1.utils.structs.table.derived.DeclaredMethodFactory;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
 import com.f1.utils.structs.table.derived.DerivedCellCalculatorMethod;
@@ -138,6 +140,14 @@ public class AmiWebScriptAutoCompletion implements WebMenuListener {
 	private MethodDerivedCellCalculator activeMethod;
 	private Class<?> activeType;
 	final private AmiWebService service;
+	
+	//add
+	public byte scope = AmiWebFormPortletAmiScriptField.LANGUAGE_SCOPE_WEB_SCRIPT;
+	private AmiCenterManagerImdbScriptManager centerScriptManager;
+	private Set<MethodFactory> procedureNames = new HashSet<MethodFactory>();
+
+	//test, this should be a local var instead
+	public SqlCompleter callTypes;
 
 	public AmiWebScriptAutoCompletion(AmiWebService service, AmiWebScriptManagerForLayout sm) {
 		this.service = service;
@@ -183,6 +193,62 @@ public class AmiWebScriptAutoCompletion implements WebMenuListener {
 				this.types.add(name);
 		}
 	}
+	
+	//ADD
+		public AmiWebScriptAutoCompletion(AmiWebService service, byte scope) {
+			this.scope = scope;
+
+			this.service = service;
+			this.sqlCompleter = new MultiCompleter();
+			MultiCompleter alterTypes = new MultiCompleter();
+			alterTypes.addCompleter(new SqlCompleter("ADD ? ?", null));
+			alterTypes.addCompleter(new SqlCompleter("DROP ?", null));
+			alterTypes.addCompleter(new SqlCompleter("MODIFY ? AS ? ?", null));
+			alterTypes.addCompleter(new SqlCompleter("RENAME ? TO ?", null));
+			MultiCompleter createTypes = new MultiCompleter();
+			createTypes.addCompleter(new SqlCompleter("SELECT * FROM _", null));
+			createTypes.addCompleter(new SqlCompleter("PREPARE * FROM _", null));
+			createTypes.addCompleter(new SqlCompleter("ANALYZE * FROM _", null));
+			MultiCompleter updateTypes = new MultiCompleter();
+			updateTypes.addCompleter(new SqlCompleter("SET", null));
+
+			//add
+			callTypes = new SqlCompleter("CALL _", null);
+			this.sqlCompleter.addCompleter(callTypes);
+
+			this.sqlCompleter.addCompleter(new SqlCompleter("DROP TABLE _", null));
+			this.sqlCompleter.addCompleter(new SqlCompleter("RENAME TABLE _ TO ?", null));
+			this.sqlCompleter.addCompleter(new SqlCompleter("UPDATE _ ", updateTypes));
+			this.sqlCompleter.addCompleter(new SqlCompleter("ALTER TABLE _", alterTypes));
+			this.sqlCompleter.addCompleter(new SqlCompleter("CREATE TABLE ? AS", createTypes));
+			for (Completer c : createTypes.completers)
+				this.sqlCompleter.addCompleter(c);
+			createTypes.addCompleter(new SqlCompleter("EXECUTE ", null));
+			createTypes.addCompleter(new SqlCompleter("USE EXECUTE ", null));
+
+			if (scope == AmiWebFormPortletAmiScriptField.LANGUAGE_SCOPE_CENTER_SCRIPT) {
+				this.centerScriptManager = new AmiCenterManagerImdbScriptManager(service);
+				this.layoutAlias = "";
+				this.factory = centerScriptManager.getMethodFactory();
+				List<DerivedCellMemberMethod<Object>> sink = new ArrayList<DerivedCellMemberMethod<Object>>();
+				this.factory.getMemberMethods(null, null, sink);
+				for (DerivedCellMemberMethod<Object> i : sink) {
+					String name = this.factory.forType(i.getTargetType());
+					if (name != null)
+						this.types.add(name);
+				}
+			}
+
+			types.add("int");
+			types.add("long");
+			types.add("double");
+			types.add("float");
+			types.add("boolean");
+			types.add("String");
+
+		}
+	
+	
 	public void addAllVariables(com.f1.base.CalcTypes mapping) {
 		this.globalVars.putAll(mapping);
 		//		for (String name : mapping.keySet()) {
@@ -1162,4 +1228,21 @@ public class AmiWebScriptAutoCompletion implements WebMenuListener {
 			this.factory = scriptManager.getMethodFactory();
 		}
 	}
+	
+	//add
+		public BasicMethodFactory getMethodFactory() {
+			switch (this.scope) {
+				case AmiWebFormPortletAmiScriptField.LANGUAGE_SCOPE_CENTER_SCRIPT:
+					return centerScriptManager.getMethodFactory();
+				case AmiWebFormPortletAmiScriptField.LANGUAGE_SCOPE_WEB_SCRIPT:
+					return scriptManager.getMethodFactory();
+			}
+			throw new NullPointerException();
+
+		}
+
+		public void registerProcedure(MethodFactory toAdd) {
+			this.procedureNames.add(toAdd);
+
+		}
 }

@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Set;
 
 import com.f1.ami.amicommon.AmiUtils;
+import com.f1.ami.web.centermanager.autocomplete.AmiCenterManagerImdbScriptManager;
+import com.f1.ami.web.centermanager.autocomplete.AutoCompleteListener;
 import com.f1.base.CalcFrame;
 import com.f1.suite.web.JsFunction;
 import com.f1.suite.web.portal.PortletManager;
@@ -16,9 +18,16 @@ import com.f1.utils.OH;
 import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_Integer;
 import com.f1.utils.casters.Caster_String;
+import com.f1.utils.structs.table.derived.BasicMethodFactory;
+import com.f1.utils.structs.table.derived.MethodFactory;
+import com.f1.utils.structs.table.derived.ParamsDefinition;
 import com.f1.utils.structs.table.stack.BasicCalcTypes;
 
-public class AmiWebFormPortletAmiScriptField extends FormPortletTextEditField {
+public class AmiWebFormPortletAmiScriptField extends FormPortletTextEditField implements AutoCompleteListener{
+	public static final byte LANGUAGE_SCOPE_CENTER_SCRIPT = 0;
+	public static final byte LANGUAGE_SCOPE_WEB_SCRIPT = 1;
+	//add
+	public byte scope = LANGUAGE_SCOPE_WEB_SCRIPT;
 	public static final String JSNAME = "AmiCodeField";
 	public static final Set<String> AVAILABLE_FLASH_COLORS = new HashSet<String>();
 	public static final Set<String> AVAILABLE_ANNOTATION_TYPES = new HashSet<String>();
@@ -61,6 +70,11 @@ public class AmiWebFormPortletAmiScriptField extends FormPortletTextEditField {
 	final private AmiWebService service;
 	private AmiWebScriptManagerForLayout scriptManager;
 	private AmiWebDomObject thiz;
+	
+	//add
+	private AmiCenterManagerImdbScriptManager centerScriptManager;
+	private String autoCompleteMethodName;
+	private Class[] autoCompleteVarType;
 
 	public AmiWebFormPortletAmiScriptField(String title, PortletManager manager, String layoutAlias) {
 		super(String.class, title);
@@ -75,6 +89,25 @@ public class AmiWebFormPortletAmiScriptField extends FormPortletTextEditField {
 			this.usedVariableNames.add(s);
 		this.setValueNoFire("");
 	}
+	
+	public AmiWebFormPortletAmiScriptField(String title, PortletManager manager, byte scope) {
+		super(String.class, title);
+		this.service = AmiWebUtils.getService(manager);
+		this.scope = scope;
+		this.amiLayoutAlias = "";
+		if (scope == LANGUAGE_SCOPE_CENTER_SCRIPT) {
+			this.centerScriptManager = new AmiCenterManagerImdbScriptManager(service);
+			this.varMapping = new com.f1.utils.structs.table.stack.BasicCalcTypes();
+			this.autoCompletion = new AmiWebScriptAutoCompletion(service, scope);
+		}
+
+		this.amiEditorKeyboard = service.getVarsManager().getSetting(AmiWebConsts.USER_SETTING_AMI_EDITOR_KEYBOARD);
+		this.stringBuff = new StringBuilder();
+		for (String s : this.varMapping.getVarKeys())
+			this.usedVariableNames.add(s);
+		this.setValueNoFire("");
+	}
+	
 	public void setThis(AmiWebDomObject thiz) {
 		addVariable("this", thiz.getClass());
 		this.thiz = thiz;
@@ -325,5 +358,41 @@ public class AmiWebFormPortletAmiScriptField extends FormPortletTextEditField {
 		this.annotationMessage = null;
 		this.annotationRow = -1;
 		flagChange(MASK_CUSTOM);
+	}
+	
+	@Override
+	public void onAutoComplete(ParamsDefinition params) {
+		System.out.println("doing autocomplete");
+		this.autoCompleteMethodName = params.getMethodName();
+		this.autoCompleteVarType = params.getParamTypes();
+		flagChange(MASK_CUSTOM);
+		//fireConfigChanged();
+
+	}
+
+	//add, for testing
+	//	public void addMethodFactory(MethodFactory toAdd) {
+	//		this.service.getScriptManager(this.amiLayoutAlias).getMethodFactory().addFactory(toAdd);
+	//	}
+
+	public void addMethodFactory(MethodFactory toAdd) {
+		this.autoCompletion.getMethodFactory().addFactory(toAdd);
+	}
+
+	public void registerProcedure(MethodFactory toAdd) {
+		this.autoCompletion.registerProcedure(toAdd);
+	}
+
+	//add, for center mode only 
+	public AmiCenterManagerImdbScriptManager getCenterScriptManager() {
+		if (this.scope != LANGUAGE_SCOPE_CENTER_SCRIPT)
+			throw new IllegalStateException("cannot access center script manager in scope:" + this.scope);
+		return this.centerScriptManager;
+	}
+
+	public BasicMethodFactory getCenterMethodFactory() {
+		if (this.scope != LANGUAGE_SCOPE_CENTER_SCRIPT)
+			throw new IllegalStateException("cannot access center script manager in scope:" + this.scope);
+		return this.centerScriptManager.getMethodFactory();
 	}
 }
