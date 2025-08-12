@@ -418,7 +418,7 @@ public class FastWebTree implements WebMenuListener, FastWebColumns {
 		 * treeColumn(group by column) does not count towards visibleColumns), in which case we should not set this.headerRowHeight to 0(setting it to 0 will cause js overflow). We
 		 * should instead check whether this.columns is empty 2. In a AmiWebDmTreePortlet context, where we do want to set the headerHeightPx to 0, because this.columns is empty
 		 */
-		int headerHeightPx = this.headerRowHeight; // set headerHeight to 0 will cause js overflow if the UI does have at least one column to render
+		int headerHeightPx = this.columns.isEmpty() ? 0 : this.headerRowHeight;// set headerHeight to 0 will cause js overflow if the UI does have at least one column to render
 		int topPaddingPx = this.visibleColumns.getSize() > 0 ? 0 : 4;
 		jsFunction.reset(js, "setMetrics").addParam(this.rowHeight).addParam(this.leftPaddingPx).addParam(topPaddingPx).addParam(headerHeightPx).end();
 	}
