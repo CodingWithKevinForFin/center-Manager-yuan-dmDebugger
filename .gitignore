@@ -1,0 +1,7 @@
+amione/
+*.txt
+**/*.class
+**/org*
+**/.*
+!.gitignore
+**/pom.properties
