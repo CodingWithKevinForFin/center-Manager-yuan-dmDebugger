@@ -18,6 +18,7 @@ import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.AmiWebUtils;
 import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
 import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
+import com.f1.ami.web.centermanager.AmiUserEditMessage;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Table;
 import com.f1.ami.web.centermanager.editors.AmiCenterManagerAbstractEditCenterObjectPortlet;
 import com.f1.base.Action;
@@ -180,8 +181,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				new BasicTable(new Class<?>[] { String.class, String.class, String.class }, new String[] { "type", "targetColumn", "description" }), "User Changes");
 
 		MapWebCellFormatter typeFormatter = new MapWebCellFormatter(new BasicTextFormatter());
-		typeFormatter.addEntry(AmiDebugMessage.SEVERITY_INFO, "Debug", "_cna=portlet_icon_debug", "&nbsp;&nbsp;&nbsp;&nbsp;Info");
-		typeFormatter.addEntry(AmiDebugMessage.SEVERITY_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_ADD, "Add", "_cna=column_editor_icon_add", "&nbsp;&nbsp;&nbsp;&nbsp;Add");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_DELETE, "Delete", "_cna=column_editor_icon_delete", "&nbsp;&nbsp;&nbsp;&nbsp;Delete");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_UPDATE, "Update", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Update");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
 
 		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(100);
 		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(100);
@@ -218,6 +221,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String dfltDataType = "String";
 		columnMetadata.addRow(nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
 		existingColNames.add(nextColName);
+		onRowInserted(nextColName);
 	}
 
 	private void insertEmptyRowAt(int i) {
@@ -225,6 +229,14 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String dfltDataType = "String";
 		columnMetadata.addRowAt(i, nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
 		existingColNames.add(nextColName);
+		onRowInserted(nextColName);
+	}
+	
+	private void onRowInserted(String colName) {
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, colName, null);
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE, colName, null);
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, null);
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, colName, null);
 	}
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, String tableSql, AmiCenterGraphNode_Table correlationNode) {

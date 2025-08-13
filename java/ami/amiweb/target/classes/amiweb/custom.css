@@ -124,6 +124,46 @@
   color:black;
   font-family:ms sans serif;
 }
+/*
+add user log icons for column editor
+*/
+.column_editor_icon_add{
+  float:left;
+  background-image:url('rsc/table_edit_icons/add.png');
+  width:16px;
+  height:16px;
+  background-repeat:no-repeat;
+  background-position:left center;
+  color:green;
+}
+.column_editor_icon_delete{
+  float:left;
+  background-image:url('rsc/table_edit_icons/delete.png');
+  width:16px;
+  height:16px;
+  background-repeat:no-repeat;
+  background-position:left center;
+  color:red;
+}.column_editor_icon_update{
+    float:left;
+  background-image:url('rsc/table_edit_icons/edit.png');
+  width:18px;
+  height:18px;
+  background-repeat:no-repeat;
+  background-position:left center;
+  color:rgb(44, 194, 31);
+}.column_editor_icon_warning{
+  float:left;
+  background-image:url('rsc/portlet_icon_warning.gif');
+  width:18px;
+  height:18px;
+  background-repeat:no-repeat;
+  background-position:left center;
+  color:#888102;
+}
+/*
+end
+*/
 .portal_form_title{
   color:#0000CC;
 }
