@@ -1,7 +1,9 @@
 package com.f1.ami.web.centermanager.editors;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -55,9 +57,11 @@ import com.f1.suite.web.table.fast.FastWebTable;
 import com.f1.suite.web.table.impl.MapWebCellFormatter;
 import com.f1.suite.web.table.impl.NumberWebCellFormatter;
 import com.f1.suite.web.table.impl.WebCellStyleWrapperFormatter;
+import com.f1.utils.CH;
 import com.f1.utils.MH;
 import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_Boolean;
+import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.HasherMap;
 import com.f1.utils.formatter.BasicTextFormatter;
 import com.f1.utils.impl.CaseInsensitiveHasher;
@@ -72,6 +76,18 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private static final String BG_GREY = "_bg=#4c4c4c";
 	private static final int LEFTPOS = 120;
 	private static final int TOPPOS = 20;
+	
+	public static final byte UPDATE_TYPE_COLUMN_NAME = 1;
+	public static final byte UPDATE_TYPE_COLUMN_TYPE = 2;
+	public static final byte UPDATE_TYPE_COLUMN_OPTIONS = 4;
+	public static final byte UPDATE_TYPE_COLUMN_POSITION = 8;
+	
+	public static final String KEY_COLUMN_NAME = "name";
+	public static final String KEY_COLUMN_DATATYPE = "type";
+	public static final String KEY_COLUMN_OPTIONS = "options";
+	public static final String KEY_COLUMN_POS = "position";
+	
+	
 
 	final private AmiWebService service;
 	final private FormPortlet tableInfoPortlet;
@@ -85,6 +101,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	final private FastTablePortlet userLogTable;
 	private boolean enableColumnEditing = false;
 	private HasherMap<String, TableEditableColumn> editableColumnIds = new HasherMap<String, TableEditableColumn>();
+	private HashMap<String, Row> colNames2rows_Table = new HashMap<String, Row>();
+	private HashMap<String, Row> colNames2rows_Log = new HashMap<String, Row>();
 	private Set<String> existingColNames = new HashSet<String>();
 	final private AmiCenterManagerColumnMetaDataEditForm columnMetaDataEditForm;
 	private String sql;
@@ -219,24 +237,74 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void insertEmptyRow() {
 		String nextColName = getNextColumnName("new_column");
 		String dfltDataType = "String";
-		columnMetadata.addRow(nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRow(nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
 		existingColNames.add(nextColName);
-		onRowInserted(nextColName);
+		colNames2rows_Table.put(nextColName, r);
+		onRowInserted(r);
 	}
 
 	private void insertEmptyRowAt(int i) {
 		String nextColName = getNextColumnName("new_column");
 		String dfltDataType = "String";
-		columnMetadata.addRowAt(i, nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRowAt(i, nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
 		existingColNames.add(nextColName);
-		onRowInserted(nextColName);
+		colNames2rows_Table.put(nextColName, r);
+		onRowInserted(r);
 	}
 	
-	private void onRowInserted(String colName) {
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, colName, null);
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE, colName, null);
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, null);
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, colName, null);
+	private void onRowInserted(Row r) {
+		String colName =(String) r.get("columnName");
+		int pos = r.getLocation();
+		Row logRow = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, colName, "A new column `" + colName + '`' + " is added");
+		colNames2rows_Log.put(colName, logRow);
+	}
+	
+	private void onRowDeleted(Row r) {
+		String colName =(String) r.get("columnName");
+		int pos = r.getLocation();
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE,colName,"The column`" + colName + '`' + " is removed from the table at position " + pos);
+	}
+	
+	//need to update the "Add" message in the log table for empty row
+	private void onEmptyRowUpdated(String nuwColumnName, String oldColumnName) {
+		Row logRow = colNames2rows_Log.get(oldColumnName);
+		logRow.put("description", "A new column `" + nuwColumnName + '`' + " is added");
+		logRow.put("targetColumn", nuwColumnName);
+		colNames2rows_Log.remove(oldColumnName);
+		colNames2rows_Log.put(nuwColumnName, logRow);
+	}
+	//need to update the "Add" message in the log table for empty row
+	private void onEmptyRowDeleted(Row r) {
+		String colName = (String)r.get("columnName");
+		Row logRow = colNames2rows_Log.get(colName);
+		userLogTable.removeRow(logRow);
+		colNames2rows_Log.remove(colName);
+	}
+	
+	private void processUpdate(byte changes,Row r, StringBuilder msg) {
+		boolean nameChanged = MH.anyBits(changes, UPDATE_TYPE_COLUMN_NAME);
+		boolean typeChanged = MH.anyBits(changes, UPDATE_TYPE_COLUMN_TYPE);
+		boolean optionChanged = MH.anyBits(changes, UPDATE_TYPE_COLUMN_OPTIONS);
+		boolean posChanged = MH.anyBits(changes, UPDATE_TYPE_COLUMN_POSITION);
+		if(nameChanged)
+			onRowUpdated(UPDATE_TYPE_COLUMN_NAME, r, msg);
+		if(typeChanged)
+			onRowUpdated(UPDATE_TYPE_COLUMN_TYPE, r, msg);
+		if(optionChanged)
+			onRowUpdated(UPDATE_TYPE_COLUMN_OPTIONS, r, msg);
+		if(posChanged)
+			onRowUpdated(UPDATE_TYPE_COLUMN_POSITION, r, msg);
+		
+	}
+	
+	private void onRowUpdated(byte type, Row nuwRow, StringBuilder msg) {
+		switch(type) {
+			case UPDATE_TYPE_COLUMN_NAME:
+			case UPDATE_TYPE_COLUMN_TYPE:
+			case UPDATE_TYPE_COLUMN_OPTIONS:
+			case UPDATE_TYPE_COLUMN_POSITION:
+				
+		}
 	}
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, String tableSql, AmiCenterGraphNode_Table correlationNode) {
@@ -338,8 +406,14 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			}
 
 		} else if ("drop_column".equals(action)) {
-			for (Row r : table.getSelectedRows())
+			for (Row r : table.getSelectedRows()) {
 				columnMetadata.removeRow(r);
+				if(isAdd)
+					onEmptyRowDeleted(r);
+				else
+					onRowDeleted(r);
+			}
+				
 			return;
 		} else if ("add_column".equals(action)) {
 			insertEmptyRow();
@@ -351,7 +425,13 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			if ("move_up".equals(action)) {
 				columnMetadata.removeRow(toMove);
 				moveToIndex = origLoc == 0 ? origSize - 1 : origLoc - 1;
-				columnMetadata.addRowAt(moveToIndex, toMove);
+				Row nuwRow = columnMetadata.addRowAt(moveToIndex, toMove);
+				Tuple2<Map<String,Object>, Map<String, Object>> changes = new Tuple2<Map<String,Object>, Map<String,Object>>();
+				Map<String,Object> old = CH.m("position",origLoc);
+				Map<String,Object> nuw = CH.m("position",nuwRow.getLocation());
+				changes.setA(old);
+				changes.setB(nuw);
+				//onRowUpdated(UPDATE_TYPE_COLUMN_POSITION, toMove.get("columnName"), changes);
 			} else if ("move_down".equals(action)) {
 				columnMetadata.removeRow(toMove);
 				moveToIndex = origLoc == origSize - 1 ? 0 : origLoc + 1;
@@ -366,7 +446,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		}
 
 	}
-
+	
 	@Override
 	public void onCellClicked(WebTable table, Row row, WebColumn col) {
 	}
@@ -495,22 +575,15 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	@Override
 	public void onSpecialKeyPressed(FormPortlet formPortlet, FormPortletField<?> field, int keycode, int mask, int cursorPosition) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public void onContextMenu(FormPortlet portlet, String action, FormPortletField node) {
-		if ("add_column".equals(action)) {
-			insertEmptyRow();
-		}
-
 	}
 
 	public void onRowSelected(Row row) {
@@ -787,12 +860,19 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				f.setValue((String) val);
 			}
 		}
+		//update the log table if the column name has changed for added empty row
+		if(isAdd) {
+			String colNameNuw = (String) r.get("columnName");
+			String colNameOld = (String) origRow.get("columnName");
+			if(!colNameNuw.equals(colNameOld))
+				onEmptyRowUpdated(colNameNuw, colNameOld);
+		}
+		
 
 	}
 
 	@Override
 	public void onTableEditAbort(FastTablePortlet fastTablePortlet) {
-		//This is unsupported
 		return;
 	}
 
@@ -933,6 +1013,39 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//also revert the table
 		importFromText(sql, new StringBuilder());
 
+	}
+	
+//	public static Map<String,Object> retrieveColumnProperty(Row r){
+//		
+//	}
+	
+	public static String getOptionStringForRow(Row r) {
+		StringBuilder sb = new StringBuilder();
+		Boolean isCompact = Caster_Boolean.INSTANCE.cast(r.get("compact"));
+		Boolean isAscii = Caster_Boolean.INSTANCE.cast(r.get("ascii"));
+		Boolean isBitmap = Caster_Boolean.INSTANCE.cast(r.get("bitmap"));
+		Boolean isOndisk = Caster_Boolean.INSTANCE.cast(r.get("ondisk"));
+		Boolean isEnum = Caster_Boolean.INSTANCE.cast(r.get("enum"));
+		Boolean isCache = Caster_Boolean.INSTANCE.cast(r.get("cache"));
+		if(isCompact)
+			sb.append("Compact ");
+		if(isAscii)
+			sb.append("Ascii");
+		if(isBitmap)
+			sb.append("Bitmap");
+		if(isOndisk)
+			sb.append("Ondisk");
+		if(isEnum)
+			sb.append("Enum");
+		if(isCache)
+			sb.append("Cache");
+		if(isCache) {
+			String cacheValue = Caster_String.INSTANCE.cast(r.get("cacheValue"));
+			if(cacheValue != null)
+				sb.append("=").append(cacheValue);
+		}
+		return sb.toString();
+			
 	}
 
 }
