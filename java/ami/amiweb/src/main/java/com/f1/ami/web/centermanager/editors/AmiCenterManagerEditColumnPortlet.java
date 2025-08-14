@@ -867,7 +867,30 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			if(!colNameNuw.equals(colNameOld))
 				onEmptyRowUpdated(colNameNuw, colNameOld);
 		}
+		//check mutual exclusive column options
+		Boolean isCompact = Caster_Boolean.INSTANCE.cast(r.get("compact"));
+		Boolean isAscii = Caster_Boolean.INSTANCE.cast(r.get("ascii"));
+		Boolean isBitmap = Caster_Boolean.INSTANCE.cast(r.get("bitmap"));
+		Boolean isOndisk = Caster_Boolean.INSTANCE.cast(r.get("ondisk"));
+		Boolean isEnum = Caster_Boolean.INSTANCE.cast(r.get("enum"));
+		Boolean isCache = Caster_Boolean.INSTANCE.cast(r.get("cache"));
+		String type =(String) r.get("dataType");
+		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
+		if(isOndisk && (isAscii || isBitmap || isEnum))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ONDISK can not be used in conjunction with other supplied directives");
 		
+		//RULE2: BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
+		if(isCompact && isBitmap)
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "BITMAP and COMPACT directive are mutually exclusive");
+
+
+		//RULE3: ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
+		if(isAscii && !isCompact)
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ASCII directive only supported for STRING columns with COMPACT option");
+
+		//RULE4: ONDISK directive only supported for STRING and BINARY columns
+		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ONDISK directive only supported for STRING and BINARY columns");
 
 	}
 
@@ -908,28 +931,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if ("cache".equals(col.getId()) && "true".equals(v)) {
 			ondiskCol.setValue(y, true);
 		}
-		//		//ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
-		//		if ("ondisk".equals(col.getId()) && "true".equals(v)) {
-		//			asciiCol.setValue(y, false);
-		//			bitmapCol.setValue(y, false);
-		//			enumCol.setValue(y, false);
-		//		}
-		//		//BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
-		//		if ("bitmap".equals(col.getId()) && "true".equals(v)) {
-		//			compactCol.setValue(y, false);
-		//		} else if ("compact".equals(col.getId()) && "true".equals(v)) {
-		//			bitmapCol.setValue(y, false);
-		//		}
-		//
-		//		//ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
-		//		if ("ascii".equals(col.getId()) && "true".equals(v)) {
-		//			compactCol.setValue(y, true);
-		//		}
-		//
-		//		//ONDISK directive only supported for STRING and BINARY columns
-		//		if ("ondisk".equals(col.getId()) && "true".equals(v) && !(dataTypeCol.getValue(y).equals("String") || dataTypeCol.getValue(y).equals("Binary"))) {
-		//			return;
-		//		}
+		
 		if (y < this.columnMetadata.getTable().getRowsCount())
 			this.columnMetadata.getTable().getRow(y).putAt(col.getLocation(), cast);
 	}
