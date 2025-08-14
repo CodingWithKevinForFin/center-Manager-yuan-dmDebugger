@@ -643,78 +643,6 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("bitmap")).setValue(bitmap);
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("cache")).setValue(cache);
 		((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("cacheValue")).setValue(cacheVal);
-
-		//		switch (AmiUtils.parseTypeName(dataType)) {
-		//			case AmiDatasourceColumn.TYPE_BIGDEC:
-		//			case AmiDatasourceColumn.TYPE_BIGINT:
-		//			case AmiDatasourceColumn.TYPE_BOOLEAN:
-		//			case AmiDatasourceColumn.TYPE_BYTE:
-		//			case AmiDatasourceColumn.TYPE_CHAR:
-		//			case AmiDatasourceColumn.TYPE_COMPLEX:
-		//			case AmiDatasourceColumn.TYPE_DOUBLE:
-		//			case AmiDatasourceColumn.TYPE_FLOAT:
-		//			case AmiDatasourceColumn.TYPE_INT:
-		//			case AmiDatasourceColumn.TYPE_LONG:
-		//			case AmiDatasourceColumn.TYPE_SHORT:
-		//			case AmiDatasourceColumn.TYPE_UTC:
-		//			case AmiDatasourceColumn.TYPE_UTCN:
-		//			case AmiDatasourceColumn.TYPE_UUID:
-		//				setNoBroadCast(m);
-		//				//enable common options
-		//				this.columnMetaDataEditForm.disableCommonOptions(false);
-		//				break;
-		//			case AmiDatasourceColumn.TYPE_STRING:
-		//				setNoBroadCast(m);
-		//				//enable common options
-		//				this.columnMetaDataEditForm.disableCommonOptions(false);
-		//
-		//				Boolean isCompact = Caster_Boolean.INSTANCE.cast(m.get(AmiConsts.COMPACT));
-		//				Boolean isAscii = Caster_Boolean.INSTANCE.cast(m.get(AmiConsts.ASCII));
-		//				Boolean isBitmap = Caster_Boolean.INSTANCE.cast(m.get(AmiConsts.BITMAP));
-		//				Boolean isOndisk = Caster_Boolean.INSTANCE.cast(m.get(AmiConsts.ONDISK));
-		//				Boolean isEnum = Caster_Boolean.INSTANCE.cast(m.get(AmiConsts.TYPE_NAME_ENUM));
-		//				boolean isCache = m.get(AmiConsts.CACHE) != null;
-		//				if (isCache) {
-		//					getColumnOptionEditField(AmiConsts.CACHE).setValue(true).setDisabled(false);
-		//					String rawCacheValue = (String) m.get(AmiConsts.CACHE);
-		//					int cacheValue = parseCacheValue(rawCacheValue).getA();
-		//					String cacheUnit = parseCacheValue(rawCacheValue).getB();
-		//					if (SH.isnt(cacheUnit))
-		//						cacheUnit = AmiConsts.CACHE_UNIT_DEFAULT_BYTE;
-		//					byte cacheUnitByte = AmiCenterManagerUtils.toCacheUnitCode(cacheUnit);
-		//					this.columnMetaDataEditForm.getCacheValueField().setValue(SH.toString(cacheValue));
-		//					this.columnMetaDataEditForm.getCacheUnitField().setValue(cacheUnitByte);
-		//				}
-		//				//enable edit for all string options
-		//				this.columnMetaDataEditForm.disableStringOptions(false);
-		//				if (isCompact != null && Boolean.TRUE.equals(isCompact)) {
-		//					getColumnOptionEditField(AmiConsts.COMPACT).setValue(true).setDisabled(false);
-		//					getColumnOptionEditField(AmiConsts.BITMAP).setDisabled(true);
-		//				}
-		//				if (isAscii != null && Boolean.TRUE.equals(isAscii)) {
-		//					getColumnOptionEditField(AmiConsts.ASCII).setValue(true).setDisabled(false);
-		//				}
-		//				if (isBitmap != null && Boolean.TRUE.equals(isBitmap)) {
-		//					getColumnOptionEditField(AmiConsts.BITMAP).setValue(true).setDisabled(false);
-		//					getColumnOptionEditField(AmiConsts.COMPACT).setDisabled(true);
-		//
-		//				}
-		//				if (isOndisk != null && Boolean.TRUE.equals(isOndisk)) {
-		//					getColumnOptionEditField(AmiConsts.ONDISK).setValue(true).setDisabled(false);
-		//				}
-		//				if (isEnum != null && Boolean.TRUE.equals(isEnum)) {
-		//					getColumnOptionEditField(AmiConsts.TYPE_NAME_ENUM).setValue(true).setDisabled(false);
-		//				}
-		//
-		//				break;
-		//			case AmiDatasourceColumn.TYPE_BINARY:
-		//				setNoBroadCast(m);
-		//				//enable common options
-		//				this.columnMetaDataEditForm.disableCommonOptions(false);
-		//				break;
-		//			default:
-		//				throw new NullPointerException();
-		//		}
 	}
 
 	@Override
@@ -1073,9 +1001,6 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	}
 	
-//	public static Map<String,Object> retrieveColumnProperty(Row r){
-//		
-//	}
 	
 	public static String getOptionStringForRow(Row r) {
 		StringBuilder sb = new StringBuilder();
