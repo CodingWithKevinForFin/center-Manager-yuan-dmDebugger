@@ -782,6 +782,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 					tableRefreshPeriodMsField.setValue(value);
 					tableRefreshPeriodMsField.setDefaultValue(value);
 				} else if ("OnUndefColumn".equals(key)) {
+					if(value == null)
+						value = AmiCenterEntityConsts.ON_UNDEF_COLUMN_OPTION_IGNORE;
 					tableOnUndefColumnField.setValue(value);
 					tableOnUndefColumnField.setDefaultValue(value);
 				} else if ("InitialCapacity".equals(key)) {
