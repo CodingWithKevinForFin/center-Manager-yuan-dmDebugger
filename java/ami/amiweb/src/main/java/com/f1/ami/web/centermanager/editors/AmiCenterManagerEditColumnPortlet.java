@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.f1.ami.amicommon.AmiConsts;
 import com.f1.ami.amicommon.AmiUtils;
@@ -740,10 +741,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				sb.append(' ').append("OnDisk");
 			Boolean cache = (Boolean) row.get("cache");
 			if (cache)
-				sb.append(' ').append("Cache = ");
+				sb.append(' ').append("Cache ");
 			String cacheVal = (String) row.get("cacheValue");
 			if (SH.is(cacheVal))
-				sb.append(' ').append(SH.doubleQuote(cacheVal));
+				sb.append('=').append(SH.doubleQuote(cacheVal));
 			if (iter.hasNext())
 				sb.append(',');
 		}
@@ -874,6 +875,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		Boolean isOndisk = Caster_Boolean.INSTANCE.cast(r.get("ondisk"));
 		Boolean isEnum = Caster_Boolean.INSTANCE.cast(r.get("enum"));
 		Boolean isCache = Caster_Boolean.INSTANCE.cast(r.get("cache"));
+		String cacheValue = (String) r.get("cacheValue");
 		String type =(String) r.get("dataType");
 		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
 		if(isOndisk && (isAscii || isBitmap || isEnum))
@@ -891,9 +893,23 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//RULE4: ONDISK directive only supported for STRING and BINARY columns
 		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
 			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ONDISK directive only supported for STRING and BINARY columns");
+		
+		//RULE5: cache value cannot be empty
+		if(isCache && !isValidCacheValue(cacheValue))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
 
+		
 	}
-
+	
+	private static boolean isValidCacheValue(String cacheValue) {
+		if(cacheValue == null)
+			return false;
+		cacheValue = SH.trim(cacheValue);
+		Pattern CACHE_VALUE_PATTERN = Pattern.compile("^\\d+(KB|MB|GB|TB)?$");
+		return CACHE_VALUE_PATTERN.matcher(cacheValue).matches();
+	}
+	
+	
 	@Override
 	public void onTableEditAbort(FastTablePortlet fastTablePortlet) {
 		return;
