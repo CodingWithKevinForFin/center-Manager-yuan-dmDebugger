@@ -68,6 +68,7 @@ import com.f1.utils.formatter.BasicTextFormatter;
 import com.f1.utils.impl.CaseInsensitiveHasher;
 import com.f1.utils.string.ExpressionParserException;
 import com.f1.utils.string.sqlnode.CreateTableNode;
+import com.f1.utils.structs.MapInMap;
 import com.f1.utils.structs.Tuple2;
 import com.f1.utils.structs.table.BasicTable;
 import com.f1.utils.structs.table.SmartTable;
@@ -107,6 +108,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private Set<String> existingColNames = new HashSet<String>();
 	final private AmiCenterManagerColumnMetaDataEditForm columnMetaDataEditForm;
 	private String sql;
+	private MapInMap<String,String,String> origColumnConfig = new MapInMap<String,String,String>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
 		super(config, isAdd);
@@ -206,7 +208,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
 
 		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(100);
-		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(100);
+		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(130);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
 
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
@@ -262,8 +264,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	private void onRowDeleted(Row r) {
 		String colName =(String) r.get("columnName");
-		int pos = r.getLocation();
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE,colName,"The column`" + colName + '`' + " is removed from the table at position " + pos);
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE,colName,"The column`" + colName + '`' + " is removed from the table");
 	}
 	
 	//need to update the "Add" message in the log table for empty row
@@ -370,6 +371,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				Integer position = (Integer) r.get("Position");
 				columnMetadata.addRow(columnName, dataType, options, noNull, noBroadcast, enm, compact, ascii, bitmap, ondisk, cache, cacheVal, position);
 				existingColNames.add(columnName);
+				Map<String, String> colMap = CH.m(KEY_COLUMN_DATATYPE, dataType, KEY_COLUMN_POS, SH.toString(r.getLocation()), KEY_COLUMN_OPTIONS, options);
+				origColumnConfig.put(columnName, colMap);
 			}
 		}
 
@@ -409,7 +412,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		} else if ("drop_column".equals(action)) {
 			for (Row r : table.getSelectedRows()) {
 				columnMetadata.removeRow(r);
-				if(isAdd)
+				if(isAdd)// || !origColumnConfig.containsKey((String)r.get("columnName")))
 					onEmptyRowDeleted(r);
 				else
 					onRowDeleted(r);
@@ -818,6 +821,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		enableColumnEditing(enable);
 
 	}
+	
+
 
 	@Override
 	public void onTableEditComplete(Table origTable, Table editedTable, FastTablePortlet fastTablePortlet, StringBuilder errorSink) {
@@ -837,6 +842,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			throw new UnsupportedOperationException("Only one row is allowed to be edited at a time");
 		Row r = editedTable.getRow(0);
 		Row origRow = origTable.getRow(0);
+		//RULE0: check duplicate column name
+		String nuwColName = (String)r.getValue("columnName");
+		if(existingColNames.contains(nuwColName)) {
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Duplicate column name:" + nuwColName);
+		}
 		for (Entry<String, Object> e : r.entrySet()) {
 			String key = e.getKey();
 			Object val = e.getValue();
@@ -864,7 +874,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			}
 		}
 		//update the log table if the column name has changed for added empty row
-		if(isAdd) {
+		if(isAdd) { //|| !origColumnConfig.containsKey((String)origRow.get("columnName"))
 			String colNameNuw = (String) r.get("columnName");
 			String colNameOld = (String) origRow.get("columnName");
 			if(!colNameNuw.equals(colNameOld))
@@ -899,7 +909,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//RULE5: cache value cannot be empty
 		if(isCache && !isValidCacheValue(cacheValue))
 			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
-
+		
+		
 		
 	}
 	
@@ -944,7 +955,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		final Column compactCol = this.columnMetadata.getTable().getTable().getColumn("compact");
 		final Column asciiCol = this.columnMetadata.getTable().getTable().getColumn("ascii");
 		final Column ondiskCol = this.columnMetadata.getTable().getTable().getColumn("ondisk");
-		final Column cacheValCol = this.columnMetadata.getTable().getTable().getColumn("cacheValue");
+		final Column cacheValCol = this.columnMetadata.getTable().getTable().getColumn("cacheValue");			
 		//Cache must used in conjunction with ondisk
 		if ("cache".equals(col.getId()) && "true".equals(v)) {
 			ondiskCol.setValue(y, true);
@@ -1032,6 +1043,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		super.revertEdit();
 		//also revert the table
 		importFromText(sql, new StringBuilder());
+		userLogTable.clearRows();
 
 	}
 	
