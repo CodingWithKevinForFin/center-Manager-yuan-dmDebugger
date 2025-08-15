@@ -81,14 +81,12 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	public static final byte UPDATE_TYPE_COLUMN_NAME = 1;
 	public static final byte UPDATE_TYPE_COLUMN_TYPE = 2;
-	public static final byte UPDATE_TYPE_COLUMN_OPTIONS = 4;
-	public static final byte UPDATE_TYPE_COLUMN_POSITION = 8;
+	public static final byte UPDATE_TYPE_COLUMN_OPTIONS = 3;
+	public static final byte UPDATE_TYPE_COLUMN_POSITION = 4;
 	
-	public static final String KEY_COLUMN_NAME = "name";
 	public static final String KEY_COLUMN_DATATYPE = "type";
 	public static final String KEY_COLUMN_OPTIONS = "options";
 	public static final String KEY_COLUMN_POS = "position";
-	
 	
 
 	final private AmiWebService service;
@@ -212,7 +210,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(100);
 		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(130);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
-
+		this.userLogTable.getTable().addMenuListener(this);
+		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
 
 		this.columnMetaDataEditForm = new AmiCenterManagerColumnMetaDataEditForm(generateConfig(), null, AmiCenterManagerColumnMetaDataEditForm.MODE_EDIT);
@@ -470,6 +469,26 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				int height = MH.min(100, (int) (root.getHeight() * 0.4));
 				getManager().showDialog("Move Column To...", p, width, height);
 			}		
+		} else if("clear_all_warnings".equals(action)) {
+			for(Row r: userLogTable.getTable().getRows()) {
+				Byte actionType = (Byte) r.get("type");
+				String col = (String) r.get("targetColumn");
+				if(AmiUserEditMessage.ACTION_TYPE_WARNING == actionType) {
+					userLogTable.removeRow(r);
+					colNames2rows_Log.remove(col);
+				}
+					
+			}
+		} else if("clear_selected_warnings".equals(action)) {
+			List<Row> selected = table.getSelectedRows();
+			for(Row r: selected) {
+				Byte actionType = (Byte) r.get("type");
+				String col = (String) r.get("targetColumn");
+				if(AmiUserEditMessage.ACTION_TYPE_WARNING == actionType) {
+					userLogTable.removeRow(r);
+					colNames2rows_Log.remove(col);
+				}
+			}
 		}
 
 	}
@@ -559,6 +578,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	@Override
 	public void onSelectedChanged(FastWebTable fastWebTable) {
+		if(fastWebTable == userLogTable.getTable())
+			return;
 		Row activeRow = fastWebTable.getActiveRow();
 		if (activeRow != null)
 			onRowSelected(activeRow);
@@ -581,23 +602,33 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	public WebMenu createMenu(WebTable table) {
 		FastWebTable ftw = (FastWebTable) table;
 		BasicWebMenu m = new BasicWebMenu();
-		m.add(new BasicWebMenuLink("Add Column", true, "add_column"));
-		if (ftw.getActiveRow() != null) {
-			m.add(new BasicWebMenuLink("Drop Column", true, "drop_column"));
-			switch (ftw.getSelectedRows().size()) {
-				case 1:
-					int origRowPos = ftw.getActiveRow().getLocation();
-					String origColumnName = (String) ftw.getActiveRow().get("columnName");
-					m.add(new BasicWebMenuLink("Move Up", true, "move_up"));
-					m.add(new BasicWebMenuLink("Move Down", true, "move_down"));
-					m.add(new BasicWebMenuLink("Move To Index...", true, "move_to"));
-					m.add(new BasicWebMenuLink("Add Column Before " + origColumnName, true, "add_column_before_" + origColumnName));
-					m.add(new BasicWebMenuLink("Add Column After " + origColumnName, true, "add_column_after_" + origColumnName));
-					break;
-				default:
-					break;
+		if(ftw == columnMetadata.getTable()) {
+			m.add(new BasicWebMenuLink("Add Column", true, "add_column"));
+			if (ftw.getActiveRow() != null) {
+				m.add(new BasicWebMenuLink("Drop Column", true, "drop_column"));
+				switch (ftw.getSelectedRows().size()) {
+					case 1:
+						int origRowPos = ftw.getActiveRow().getLocation();
+						String origColumnName = (String) ftw.getActiveRow().get("columnName");
+						m.add(new BasicWebMenuLink("Move Up", true, "move_up"));
+						m.add(new BasicWebMenuLink("Move Down", true, "move_down"));
+						m.add(new BasicWebMenuLink("Move To Index...", true, "move_to"));
+						m.add(new BasicWebMenuLink("Add Column Before " + origColumnName, true, "add_column_before_" + origColumnName));
+						m.add(new BasicWebMenuLink("Add Column After " + origColumnName, true, "add_column_after_" + origColumnName));
+						break;
+					default:
+						break;
+				}
 			}
+		}else if(ftw == userLogTable.getTable()) {
+			m.add(new BasicWebMenuLink("Clear All Warning(s)", true, "clear_all_warnings"));
+			Row activeRow = ftw.getActiveRow();
+			if (activeRow != null) {
+				Byte actionType = (Byte) activeRow.get("type");
+				if(AmiUserEditMessage.ACTION_TYPE_WARNING == actionType)
+					m.add(new BasicWebMenuLink("Clear Selected Warnings", true, "clear_selected_warnings"));			}
 		}
+		
 		return m;
 	}
 
