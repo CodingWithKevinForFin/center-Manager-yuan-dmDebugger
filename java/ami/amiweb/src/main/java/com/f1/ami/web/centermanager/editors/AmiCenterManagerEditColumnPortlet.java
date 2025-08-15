@@ -864,7 +864,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if(isCache && !isValidCacheValue(cacheValue))
 			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
 		
-		
+		//RULE6: need to switch on cache before configuring cache value
+		if(SH.is(cacheValue) && !isCache) 
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Need to enable cache before configuring cache value");
 		
 	}
 	
