@@ -107,7 +107,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private HashMap<String, Row> colNames2rows_Log = new HashMap<String, Row>();
 	private Set<String> existingColNames = new HashSet<String>();
 	final private AmiCenterManagerColumnMetaDataEditForm columnMetaDataEditForm;
+	
 	private String sql;
+	private Map<String, String> origConfig;
 	private MapInMap<String,String,String> origColumnConfig = new MapInMap<String,String,String>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
@@ -789,6 +791,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		try {
 			CreateTableNode cn = AmiCenterManagerUtils.scriptToCreateTableNode(text);
 			Map<String, String> tableConfig = AmiCenterManagerUtils.parseAdminNode_Table(cn);
+			this.origConfig = tableConfig;
 			String tableName = tableConfig.get("name");
 			tableNameField.setDefaultValue(tableName);
 			tableNameField.setValue(tableName);
@@ -1064,10 +1067,24 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String columnName = SH.getNextId(name, existingColNames);
 		return columnName;
 	}
+	
 
 	@Override
 	public String previewEdit() {
-		// TODO Auto-generated method stub
+		//diff this.sql and previewScript()
+		String curSql = previewScript();
+		CreateTableNode cn = AmiCenterManagerUtils.scriptToCreateTableNode(curSql);
+		Map<String, String> curConfig = AmiCenterManagerUtils.parseAdminNode_Table(cn);
+		//strategy:
+		//Find columns present in new but not old → ADD COLUMN
+
+		//Find columns present in old but not new → DROP COLUMN
+
+		//Find columns in both but with changed type/constraints → MODIFY COLUMN
+
+		//compare ordering
+
+		//Compare table options → apply ALTER TABLE ... ENGINE = ...
 		return null;
 	}
 
