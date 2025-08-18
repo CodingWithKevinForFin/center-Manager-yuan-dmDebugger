@@ -123,8 +123,11 @@ public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends Gr
 		} else if (button == this.resetButton) {
 			revertEdit();
 		} else if (button == this.applyButton) {
-			String sql = isAdd ? previewScript() : previewEdit();
-			getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), sql), 1000, 750);
+			if(ensureCanProceedWithApply()) {
+				String sql = isAdd ? previewScript() : previewEdit();
+				getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), sql), 1000, 750);
+			}
+			
 
 		}
 	}
@@ -241,4 +244,7 @@ public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends Gr
 	abstract public void importFromText(String text, StringBuilder sink);
 
 	abstract public void enableEdit(boolean enable);
+	
+	//ensure all valid inputs before hitting apply(e.g all required fields are filled in)
+	abstract public boolean ensureCanProceedWithApply();
 }

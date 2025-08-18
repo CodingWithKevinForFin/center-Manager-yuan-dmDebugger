@@ -438,4 +438,14 @@ public class AmiCenterManagerEditProcedurePortlet extends AmiCenterManagerAbstra
 		return null;
 	}
 
+	@Override
+	public boolean ensureCanProceedWithApply() {
+		if(SH.isnt(this.nameField.getValue())) {
+			AmiCenterManagerUtils.popDialog(service, "The trigger name field cannot be empty", "Error Applying Changes");
+			return false;
+		}
+		return true;
+		
+	}
+
 }

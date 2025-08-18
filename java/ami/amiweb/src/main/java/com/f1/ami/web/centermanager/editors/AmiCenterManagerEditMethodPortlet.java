@@ -562,4 +562,9 @@ public class AmiCenterManagerEditMethodPortlet extends AmiCenterManagerAbstractE
 		return null;
 	}
 
+	@Override
+	public boolean ensureCanProceedWithApply() {
+		return true;
+	}
+
 }

@@ -533,4 +533,14 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		return null;
 	}
 
+	@Override
+	public boolean ensureCanProceedWithApply() {
+		//first check all required fields are filled in(aka namefield)
+		if(SH.isnt(this.triggerNameField.getValue())) {
+			AmiCenterManagerUtils.popDialog(service, "The trigger name field cannot be empty", "Error Applying Changes");
+			return false;
+		}
+		return true;
+	}
+
 }

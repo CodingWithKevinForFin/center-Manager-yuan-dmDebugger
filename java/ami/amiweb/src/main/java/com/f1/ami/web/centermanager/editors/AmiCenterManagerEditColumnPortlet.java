@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -60,6 +61,7 @@ import com.f1.suite.web.table.impl.NumberWebCellFormatter;
 import com.f1.suite.web.table.impl.WebCellStyleWrapperFormatter;
 import com.f1.utils.CH;
 import com.f1.utils.MH;
+import com.f1.utils.OH;
 import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_Boolean;
 import com.f1.utils.casters.Caster_String;
@@ -70,6 +72,7 @@ import com.f1.utils.string.ExpressionParserException;
 import com.f1.utils.string.sqlnode.CreateTableNode;
 import com.f1.utils.structs.MapInMap;
 import com.f1.utils.structs.Tuple2;
+import com.f1.utils.structs.Tuple3;
 import com.f1.utils.structs.table.BasicTable;
 import com.f1.utils.structs.table.SmartTable;
 
@@ -105,6 +108,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//only track add and delete
 	private HashMap<String, Row> colNames2rows_Log = new HashMap<String, Row>();
+	private Row renameTableLogRow = null;
 	private Set<String> existingColNames = new HashSet<String>();
 	final private AmiCenterManagerColumnMetaDataEditForm columnMetaDataEditForm;
 	
@@ -207,9 +211,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_ADD, "Add", "_cna=column_editor_icon_add", "&nbsp;&nbsp;&nbsp;&nbsp;Add");
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_DELETE, "Delete", "_cna=column_editor_icon_delete", "&nbsp;&nbsp;&nbsp;&nbsp;Delete");
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_UPDATE, "Edit", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Edit");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "Rename Table", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Rename Table");
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
 
-		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(100);
+		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(110);
 		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(130);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
 		this.userLogTable.getTable().addMenuListener(this);
@@ -738,7 +743,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	@Override
 	public String preparePreUseClause() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("CREATE PUBLIC TABLE ").append(tableNameField.getValue()).append('(');
+		String tableName = tableNameField.getValue();
+		sb.append("CREATE PUBLIC TABLE ");
+		AmiUtils.escapeVarName(tableName, sb);
+		sb.append('(');
 		//schema
 		Table t = this.columnMetadata.getTable().getTable();
 		Iterator<Row> iter = t.getRows().iterator();
@@ -746,7 +754,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			Row row = iter.next();
 			String dataType = (String) row.get("dataType");
 			String columnName = (String) row.get("columnName");
-			sb.append(columnName).append(" ").append(dataType);
+			AmiUtils.escapeVarName(columnName, sb);
+			sb.append(" ").append(dataType);
 
 			Boolean noNull = (Boolean) row.get("noNull");
 			if (noNull)
@@ -836,7 +845,32 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	@Override
 	public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {
 		super.onFieldValueChanged(portlet, field, attributes);
-		onFieldChanged(field);
+		onFieldChanged(field);		
+		if(field == this.tableNameField) {
+			if(!OH.eq(tableNameField.getValue(), tableNameField.getDefaultValue())) {
+				if(renameTableLogRow == null) {
+					Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "<TABLE>", "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
+					this.renameTableLogRow = r;
+				}else
+					updateRenameRow();
+			}else if(OH.eq(tableNameField.getValue(), tableNameField.getDefaultValue()) && renameTableLogRow != null)
+				removeRenameRow();
+		}
+	}
+	
+	//there can at most exist one update row(or none)
+	private void updateRenameRow() {
+		OH.assertTrue(renameTableLogRow != null);
+		userLogTable.removeRow(renameTableLogRow);
+		Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "<TABLE>", "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
+		this.renameTableLogRow = r;
+	}
+	
+	private void removeRenameRow() {
+		OH.assertTrue(renameTableLogRow != null);
+		userLogTable.removeRow(renameTableLogRow);
+		renameTableLogRow = null;
+		
 	}
 
 	@Override
@@ -1071,21 +1105,24 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	@Override
 	public String previewEdit() {
-		//diff this.sql and previewScript()
-		String curSql = previewScript();
-		CreateTableNode cn = AmiCenterManagerUtils.scriptToCreateTableNode(curSql);
-		Map<String, String> curConfig = AmiCenterManagerUtils.parseAdminNode_Table(cn);
-		//strategy:
-		//Find columns present in new but not old → ADD COLUMN
-
-		//Find columns present in old but not new → DROP COLUMN
-
-		//Find columns in both but with changed type/constraints → MODIFY COLUMN
-
-		//compare ordering
-
-		//Compare table options → apply ALTER TABLE ... ENGINE = ...
-		return null;
+		StringBuilder sb = new StringBuilder();
+		for(Row r: userLogTable.getTable().getRows()) {
+			Byte type = (Byte)r.get("type");
+			switch(type) {
+				case AmiUserEditMessage.ACTION_TYPE_DELETE:
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_ADD:
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_UPDATE:
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_WARNING:
+				
+			}
+			
+		}
+		return sb.toString();
 	}
 
 	@Override
@@ -1131,6 +1168,24 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		}
 		return sb.toString();
 			
+	}
+
+	@Override
+	public boolean ensureCanProceedWithApply() {
+		//first check all required fields are filled in(aka namefield)
+		if(SH.isnt(this.tableNameField.getValue())) {
+			AmiCenterManagerUtils.popDialog(service, "The table name field cannot be empty", "Error Applying Changes");
+			return false;
+		}
+		
+		//ensure the table should at least have one column
+		if(columnMetadata.getTable().getRows().size() < 1) {
+			AmiCenterManagerUtils.popDialog(service, "The table should at least have one column", "Error Applying Changes");
+			return false;
+		}
+		return true;
+			
+		
 	}
 
 }
