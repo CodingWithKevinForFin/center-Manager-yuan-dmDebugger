@@ -11,6 +11,7 @@ public interface AmiCenterGraphNode {
 	public byte TYPE_INDEX = 7;
 
 	public String getLabel();
+	public String getEscapedLabel();
 	public long getUid();
 	public byte getType();
 	public boolean isReadonly();

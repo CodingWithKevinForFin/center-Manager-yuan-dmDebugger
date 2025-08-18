@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsResponse;
 import com.f1.ami.portlets.AmiWebHeaderPortlet;
@@ -651,7 +652,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			return;
 		} else if ("edit_trigger".equals(action)) {
 			AmiCenterGraphNode n = nodes.get(0);
-			String query = "DESCRIBE TRIGGER " + n.getLabel();
+			String query = "DESCRIBE TRIGGER " + n.getEscapedLabel();
 			//String query = "SHOW FULL TRIGGERS";// WHERE TriggerName==\"" + n.getLabel() + "\"";
 			prepareRequestToBackend(query);
 		} else if ("delete_trigger".equals(action)) {
@@ -667,7 +668,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			prepareRequestToBackend(query);
 		} else if ("edit_timer".equals(action)) {
 			AmiCenterGraphNode n = nodes.get(0);
-			String query = "DESCRIBE TIMER " + n.getLabel();
+			String query = "DESCRIBE TIMER " +  n.getEscapedLabel();
 			prepareRequestToBackend(query);
 		} else if ("delete_timer".equals(action)) {
 			String query = "DROP TIMER ";
@@ -682,7 +683,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			prepareRequestToBackend(query);
 		} else if ("edit_procedure".equals(action)) {
 			AmiCenterGraphNode n = nodes.get(0);
-			String query = "DESCRIBE PROCEDURE " + n.getLabel();
+			String query = "DESCRIBE PROCEDURE " +  n.getEscapedLabel();
 			prepareRequestToBackend(query);
 		} else if ("delete_procedure".equals(action)) {
 			String query = "DROP PROCEDURE ";
@@ -720,7 +721,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				AmiCenterManagerUtils.popDialog(service, "CANNOT edit a read-only object", "EDIT FAIL");
 				return;
 			}
-			String query = "DESCRIBE TABLE " + n.getLabel();
+			String query = "DESCRIBE TABLE " +  n.getEscapedLabel();
 			//String query = "SHOW FULL TABLES WHERE TableName==\"" + n.getLabel() + "\"";
 			prepareRequestToBackend(query);
 		} else if ("delete_table".equals(action)) {
@@ -757,9 +758,8 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			}
 
 		}
-
 	}
-
+	
 	@Override
 	public void onNodeClicked(FastWebTree tree, WebTreeNode node) {
 		List<AmiWebDomObject> selected = new ArrayList<AmiWebDomObject>();

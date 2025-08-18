@@ -1,5 +1,6 @@
 package com.f1.ami.web.centermanager.graph.nodes;
 
+import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
 import com.f1.ami.web.centermanager.graph.AmiWebCenterGraphManager;
 
@@ -20,6 +21,11 @@ public class AmiCenterGraphAbstractNode implements AmiCenterGraphNode {
 	@Override
 	public String getLabel() {
 		return this.label;
+	}
+	
+	@Override
+	public String getEscapedLabel() {
+		return AmiUtils.escapeVarName(label);
 	}
 
 	public void setLabel(String label) {
