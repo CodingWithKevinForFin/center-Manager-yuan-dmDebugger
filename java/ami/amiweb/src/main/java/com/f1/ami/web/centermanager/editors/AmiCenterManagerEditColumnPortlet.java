@@ -1198,6 +1198,13 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			AmiCenterManagerUtils.popDialog(service, "The table should at least have one column", "Error Applying Changes");
 			return false;
 		}
+		
+		//if no changes detected
+		if(userLogTable.getTable().getRowsCount() == 0) {
+			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
+			return false;
+		}
+			
 		return true;
 			
 		
