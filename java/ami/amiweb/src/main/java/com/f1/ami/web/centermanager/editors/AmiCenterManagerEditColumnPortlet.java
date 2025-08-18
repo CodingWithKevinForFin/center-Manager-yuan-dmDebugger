@@ -151,6 +151,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//ROW4
 		tableInitialCapacityField = tableInfoPortlet.addField(new FormPortletTextField("InitialCapacity"));
 		tableInitialCapacityField.setLeftPosPx(LEFTPOS).setTopPosPx(TOPPOS + 120).setWidthPx(150).setHeightPx(DEFAULT_ROWHEIGHT);
+		
+		//disable editing table options except for name when in edit mode
+		if(!this.isAdd) {
+			disableAllTableOptionsEditingExceptForName();
+		}
 
 		tableInfoPortlet.addFormPortletListener(this);
 		//init table
@@ -234,7 +239,15 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		div.setOffsetFromTopPx(500);
 		tableInfoPortlet.addFormPortletListener(this);
 	}
-
+	
+	private void disableAllTableOptionsEditingExceptForName() {
+		tablePersistEngineField.setDisabled(true);
+		tableBroadCastField.setDisabled(true);
+		tableRefreshPeriodMsField.setDisabled(true);
+		tableOnUndefColumnField.setDisabled(true);
+		tableInitialCapacityField.setDisabled(true);
+	}
+	
 	@Override
 	public void onButtonPressed(FormPortlet portlet, FormPortletButton button) {
 		if (button == this.cancelButton) {
@@ -879,6 +892,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			if (fpf != this.enableEditingCheckbox)
 				fpf.setDisabled(!enable);
 		}
+		if(!this.isAdd)
+			disableAllTableOptionsEditingExceptForName();
 		enableColumnEditing(enable);
 
 	}
