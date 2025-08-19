@@ -1,6 +1,7 @@
 package com.f1.ami.web.centermanager.editors;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -113,8 +114,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	final private AmiCenterManagerColumnMetaDataEditForm columnMetaDataEditForm;
 	
 	private String sql;
-	private Map<String, String> origConfig;
+	private Map<String, String> origConfig; 
 	private MapInMap<String,String,String> origColumnConfig = new MapInMap<String,String,String>();
+	private Map<String, Set<String>> usedNames = new HashMap<String, Set<String>>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
 		super(config, isAdd);
@@ -222,6 +224,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(110);
 		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(130);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
+//		this.userLogTable.getTable().addColumn(true, "Original Column Reference", "ocr", fm.getBasicFormatter()).setWidth(100);
+//		this.userLogTable.getTable().hideColumn("ocr");
 		this.userLogTable.getTable().addMenuListener(this);
 		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
@@ -357,6 +361,26 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  colName, "Duplicate column name:" + nuw);
 				else {
 					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, "The column `" + old + '`' + " has been renamed to " + '`' + nuw + '`');
+					//find orig column reference
+					String origRef = null;
+					if(usedNames.containsKey(old)) {
+						usedNames.get(old).add(nuw);
+						origRef = old;
+					}else {
+						for(Entry<String, Set<String>> e: usedNames.entrySet()) {
+							String origCol = e.getKey();
+							Set<String> used = e.getValue();
+							if(used.contains(old)) {
+								origRef = origCol;
+								usedNames.get(origCol).add(nuw);
+								break;
+							}		
+						}
+					}
+					if(origRef == null)
+						throw new NullPointerException();
+					System.out.println("orig ref:" + origRef);
+					System.out.println("usedNames:" + usedNames);
 					
 					Row columnRow = colNames2rows_Table.get(old);
 					columnRow.put("columnName", nuw);
@@ -447,7 +471,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				existingColNames.add(columnName);
 				Map<String, String> colMap = CH.m(KEY_COLUMN_DATATYPE, dataType, KEY_COLUMN_POS, SH.toString(r.getLocation()), KEY_COLUMN_OPTIONS, options);
 				origColumnConfig.put(columnName, colMap);
+				usedNames.put(columnName, new HashSet<String>());
 			}
+			System.out.println(usedNames);
 		}
 
 	}
@@ -1117,12 +1143,36 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return columnName;
 	}
 	
+	//if a column is renamed, moved, and finally dropped, then all the previous actions can be ignored
+	private boolean canIgnoreRow(Row r) {
+		return false;
+	}
+	
+	public final static Comparator<Row> COMPARATOR_WARNING_FIRST = new Comparator<Row>() {
+
+		@Override
+		public int compare(Row o1, Row o2) {
+			Byte type1 = (Byte)o1.get("type");
+			Byte type2 = (Byte)o2.get("type");
+			int score1 = 0;
+			int score2 = 0;
+			if(type1 == AmiUserEditMessage.ACTION_TYPE_WARNING)
+				score1 = 1;
+			if(type2 == AmiUserEditMessage.ACTION_TYPE_WARNING)
+				score1 = 1;
+			return OH.compare(score1, score2);
+		}
+
+	};
 
 	@Override
 	public String previewEdit() {
 		StringBuilder sb = new StringBuilder();
-		for(Row r: userLogTable.getTable().getRows()) {
+		Iterable<Row> rows = userLogTable.getTable().getRows();
+		for(Row r: CH.sort(rows, COMPARATOR_WARNING_FIRST)) {
 			Byte type = (Byte)r.get("type");
+			if(canIgnoreRow(r))
+				continue;
 			switch(type) {
 				case AmiUserEditMessage.ACTION_TYPE_DELETE:
 					break;
@@ -1208,6 +1258,39 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return true;
 			
 		
+	}
+	
+	public static class ColumnNode {
+	   public String name;
+	   public String type;
+	   public int position;
+	   public boolean active = true;
+
+	   public ColumnNode next; // link to next rename
+
+	   public ColumnNode(String name, String type, int pos) {
+	        this.name = name;
+	        this.type = type;
+	        this.position = pos;
+	    }
+
+	   public void rename(String newName) {
+	        ColumnNode renamed = new ColumnNode(newName, this.type, this.position);
+	        renamed.active = this.active;
+	        this.next = renamed;
+	    }
+
+	   public void move(int newPos) {
+	        this.position = newPos;
+	    }
+
+	   public void changeType(String newType) {
+	        this.type = newType;
+	    }
+
+	   public void drop() {
+	        this.active = false;
+	    }
 	}
 
 }
