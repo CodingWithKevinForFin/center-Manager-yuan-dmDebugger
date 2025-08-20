@@ -7,11 +7,14 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import org.python.core.NewCompilerResources;
 
 import com.f1.ami.amicommon.AmiConsts;
 import com.f1.ami.amicommon.AmiUtils;
@@ -116,7 +119,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private String sql;
 	private Map<String, String> origConfig; 
 	private MapInMap<String,String,String> origColumnConfig = new MapInMap<String,String,String>();
-	private Map<String, Set<String>> usedNames = new HashMap<String, Set<String>>();
+	//use a different approach
+	//private Map<String, Set<String>> usedNames = new HashMap<String, Set<String>>();
+	private Set<String> origColNames = new HashSet<String>();
+	private Set<LinkedList<String>> editChains = new HashSet<LinkedList<String>>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
 		super(config, isAdd);
@@ -212,7 +218,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.columnMetadata.getTable().setMenuFactory(this);
 
 		this.userLogTable = new FastTablePortlet(generateConfig(),
-				new BasicTable(new Class<?>[] { String.class, String.class, String.class }, new String[] { "type", "targetColumn", "description" }), "User Changes");
+				new BasicTable(new Class<?>[] { String.class, String.class, String.class, String.class, String.class }, new String[] { "type", "oldColumn", "targetColumn", "ocr", "description" }), "User Changes");
 
 		MapWebCellFormatter typeFormatter = new MapWebCellFormatter(new BasicTextFormatter());
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_ADD, "Add", "_cna=column_editor_icon_add", "&nbsp;&nbsp;&nbsp;&nbsp;Add");
@@ -222,10 +228,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
 
 		this.userLogTable.getTable().addColumn(true, "Type", "type", typeFormatter).setWidth(110);
+		this.userLogTable.getTable().addColumn(true, "Old Column", "oldColumn", fm.getBasicFormatter()).setWidth(130);
 		this.userLogTable.getTable().addColumn(true, "Target Column", "targetColumn", fm.getBasicFormatter()).setWidth(130);
+		this.userLogTable.getTable().addColumn(true, "Original Column Reference", "ocr", fm.getBasicFormatter()).setWidth(100);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
-//		this.userLogTable.getTable().addColumn(true, "Original Column Reference", "ocr", fm.getBasicFormatter()).setWidth(100);
-//		this.userLogTable.getTable().hideColumn("ocr");
+		//this.userLogTable.getTable().hideColumn("ocr");
 		this.userLogTable.getTable().addMenuListener(this);
 		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
@@ -283,13 +290,17 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void onRowInserted(Row r) {
 		String colName =(String) r.get("columnName");
 		int pos = r.getLocation();
-		Row logRow = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, colName, "A new column `" + colName + '`' + " is added");
+		Row logRow = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, null, colName, colName, "A new column `" + colName + '`' + " is added");
 		colNames2rows_Log.put(colName, logRow);
+		LinkedList<String> newChain = new LinkedList<String>();
+		newChain.add(colName);
+		editChains.add(newChain);
 	}
 	
 	private void onRowDeleted(Row r) {
 		String colName =(String) r.get("columnName");
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE, colName, "The column`" + colName + '`' + " is removed from the table");
+		String originalColRef = findHeadFromChain(colName);
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE, colName, colName, originalColRef, "The column`" + colName + '`' + " is removed from the table");
 		if(r != colNames2rows_Table.get(colName)) // this means this is a duplicate row, don't update colnames and colNames2rows_Table
 			return;
 		existingColNames.remove(colName);
@@ -298,14 +309,26 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//need to update the "Add" message in the log table for empty row
 	private void onEmptyRowUpdated(String nuwColumnName, String oldColumnName) {
+		String originalColumnRef = null;
+		//only one node in the chain for newly added 
+		for(LinkedList<String> chain : editChains) {
+			if(chain.getLast().equals(oldColumnName)) {
+				chain.removeLast();
+				chain.add(nuwColumnName);
+				originalColumnRef = chain.getLast();
+				break;
+			}
+		}
+		
 		Row logRow = colNames2rows_Log.get(oldColumnName);
 		logRow.put("description", "A new column `" + nuwColumnName + '`' + " is added");
 		logRow.put("targetColumn", nuwColumnName);
+		logRow.put("ocr", originalColumnRef);
 		colNames2rows_Log.remove(oldColumnName);
 		colNames2rows_Log.put(nuwColumnName, logRow);
 		//also update the table
 		if(existingColNames.contains(nuwColumnName)) {
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  nuwColumnName, "Duplicate column name:" + nuwColumnName);
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  nuwColumnName, nuwColumnName, originalColumnRef, "Duplicate column name:" + nuwColumnName);
 		}else {
 			Row tableRow = colNames2rows_Table.get(oldColumnName);
 			colNames2rows_Table.remove(oldColumnName);
@@ -332,7 +355,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String nuwType = (String) nuw.get("dataType");
 		//first check if the update happens on original rows or newly added rows
 		Row logRowAdd = colNames2rows_Log.get(oldColName);
-		if(logRowAdd != null)
+		if(logRowAdd != null && !OH.eq(nuwColName, oldColName))
 			onEmptyRowUpdated(nuwColName, oldColName);
 		else {
 			System.out.println("the update is happening on orig rows");
@@ -355,55 +378,87 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	}
 	
 	private void onRowUpdated(byte type, String colName, String old, String nuw) {
+		String originalColumnRef = null;
 		switch(type) {
 			case UPDATE_TYPE_COLUMN_NAME:
 				if(existingColNames.contains(nuw))
-					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  colName, "Duplicate column name:" + nuw);
+					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, colName, colName, colName,"Duplicate column name:" + nuw);
 				else {
-					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, "The column `" + old + '`' + " has been renamed to " + '`' + nuw + '`');
-					//find orig column reference
-					String origRef = null;
-					if(usedNames.containsKey(old)) {
-						usedNames.get(old).add(nuw);
-						origRef = old;
-					}else {
-						for(Entry<String, Set<String>> e: usedNames.entrySet()) {
-							String origCol = e.getKey();
-							Set<String> used = e.getValue();
-							if(used.contains(old)) {
-								origRef = origCol;
-								usedNames.get(origCol).add(nuw);
-								break;
-							}		
+					//find orig column reference********
+//					String origRef = null;
+//					if(usedNames.containsKey(old)) {
+//						usedNames.get(old).add(nuw);
+//						origRef = old;
+//					}else {
+//						for(Entry<String, Set<String>> e: usedNames.entrySet()) {
+//							String origCol = e.getKey();
+//							Set<String> used = e.getValue();
+//							if(used.contains(old)) {
+//								origRef = origCol;
+//								usedNames.get(origCol).add(nuw);
+//								break;
+//							}		
+//						}
+//					}
+//					if(origRef == null)
+//						throw new NullPointerException();
+//					System.out.println("orig ref:" + origRef);
+//					System.out.println("usedNames:" + usedNames + "\r\n");
+					//**********************************
+					
+					//use linkedlist instead
+					boolean chainTailfound = false;
+					for(LinkedList<String> chain : editChains) {
+						if(chain.getLast().equals(old)) {
+							chain.add(nuw);
+							originalColumnRef = chain.getFirst();
+							chainTailfound = true;
+							break;
 						}
 					}
-					if(origRef == null)
-						throw new NullPointerException();
-					System.out.println("orig ref:" + origRef);
-					System.out.println("usedNames:" + usedNames);
+					if(!chainTailfound)
+						throw new IllegalStateException("Chain tail not found");
+					
+					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, old, colName, originalColumnRef, "The column `" + old + '`' + " has been renamed to " + '`' + nuw + '`');
+
 					
 					Row columnRow = colNames2rows_Table.get(old);
 					columnRow.put("columnName", nuw);
 					colNames2rows_Table.remove(old);
 					colNames2rows_Table.put(nuw, columnRow);
-				}
-					
-					
-				
+				}		
 				break;
+			//TODO: 
 			case UPDATE_TYPE_COLUMN_TYPE:
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, "The data type for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				originalColumnRef = findHeadFromChain(colName);
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef, "The data type for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			case UPDATE_TYPE_COLUMN_OPTIONS:
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, "The column options for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				originalColumnRef = findHeadFromChain(colName);
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef,  "The column options for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			case UPDATE_TYPE_COLUMN_POSITION:
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, "The position for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				originalColumnRef = findHeadFromChain(colName);
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef, "The position for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			default:
 				throw new NullPointerException("Unknown type: " + type);
 				
 		}
+	}
+	
+	//find the original column reference from the current column name
+	private String findHeadFromChain(String curColName) {
+		String head = null;
+		for(LinkedList<String> chain: editChains) {
+			if(chain.getLast().equals(curColName)) {
+				head = chain.getFirst();
+				break;
+			}	
+		}
+		if(head == null)
+			throw new IllegalStateException("Chain tail not found");
+		return head;
 	}
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, String tableSql, AmiCenterGraphNode_Table correlationNode) {
@@ -471,9 +526,13 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				existingColNames.add(columnName);
 				Map<String, String> colMap = CH.m(KEY_COLUMN_DATATYPE, dataType, KEY_COLUMN_POS, SH.toString(r.getLocation()), KEY_COLUMN_OPTIONS, options);
 				origColumnConfig.put(columnName, colMap);
-				usedNames.put(columnName, new HashSet<String>());
+				origColNames.add(columnName);
+				//init the edit chain
+				LinkedList<String> singletonChain = new LinkedList<String>();
+				singletonChain.add(columnName);
+				editChains.add(singletonChain);
 			}
-			System.out.println(usedNames);
+			
 		}
 
 	}
@@ -888,7 +947,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if(field == this.tableNameField) {
 			if(!OH.eq(tableNameField.getValue(), tableNameField.getDefaultValue())) {
 				if(renameTableLogRow == null) {
-					Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "<TABLE>", "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
+					Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, null, "<TABLE>", null,  "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
 					this.renameTableLogRow = r;
 				}else
 					updateRenameRow();
@@ -901,7 +960,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void updateRenameRow() {
 		OH.assertTrue(renameTableLogRow != null);
 		userLogTable.removeRow(renameTableLogRow);
-		Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "<TABLE>", "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
+		Row r = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, null, "<TABLE>", null, "The table has been renamed from `" + tableNameField.getDefaultValue() + "`" + " to `" + tableNameField.getValue() + "`");
 		this.renameTableLogRow = r;
 	}
 	
@@ -1000,28 +1059,28 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String type =(String) r.get("dataType");
 		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
 		if(isOndisk && (isAscii || isBitmap || isEnum))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ONDISK can not be used in conjunction with other supplied directives");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK can not be used in conjunction with other supplied directives");
 		
 		//RULE2: BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
 		if(isCompact && isBitmap)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "BITMAP and COMPACT directive are mutually exclusive");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP and COMPACT directive are mutually exclusive");
 
 
 		//RULE3: ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
 		if(isAscii && !isCompact)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ASCII directive only supported for STRING columns with COMPACT option");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII directive only supported for STRING columns with COMPACT option");
 
 		//RULE4: ONDISK directive only supported for STRING and BINARY columns
 		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "ONDISK directive only supported for STRING and BINARY columns");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK directive only supported for STRING and BINARY columns");
 		
 		//RULE5: cache value cannot be empty
 		if(isCache && !isValidCacheValue(cacheValue))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
 		
 		//RULE6: need to switch on cache before configuring cache value
 		if(SH.is(cacheValue) && !isCache) 
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Need to enable cache before configuring cache value");
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Need to enable cache before configuring cache value");
 		
 	}
 	
@@ -1144,11 +1203,17 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	}
 	
 	//if a column is renamed, moved, and finally dropped, then all the previous actions can be ignored
-	private boolean canIgnoreRow(Row r) {
-		return false;
+	private boolean canIgnoreRow(Row r, Set<String> toDelete) {
+		Byte type = (Byte)r.get("type");
+		if(AmiUserEditMessage.ACTION_TYPE_DELETE == type || AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE == type)
+			return false;
+		String origColName =(String) r.get("ocr");
+		if(toDelete.contains(origColName))
+			System.out.println("The column can be ignored because its original column reference " + origColName + " has been removed");
+		return toDelete.contains(origColName);
 	}
 	
-	public final static Comparator<Row> COMPARATOR_WARNING_FIRST = new Comparator<Row>() {
+	public final static Comparator<Row> COMPARATOR_DELETE_COLUMN_FIRST = new Comparator<Row>() {
 
 		@Override
 		public int compare(Row o1, Row o2) {
@@ -1156,11 +1221,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			Byte type2 = (Byte)o2.get("type");
 			int score1 = 0;
 			int score2 = 0;
-			if(type1 == AmiUserEditMessage.ACTION_TYPE_WARNING)
+			if(type1 == AmiUserEditMessage.ACTION_TYPE_DELETE)
 				score1 = 1;
-			if(type2 == AmiUserEditMessage.ACTION_TYPE_WARNING)
-				score1 = 1;
-			return OH.compare(score1, score2);
+			if(type2 == AmiUserEditMessage.ACTION_TYPE_DELETE)
+				score2 = 1;
+			return -OH.compare(score1, score2);
 		}
 
 	};
@@ -1168,13 +1233,20 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	@Override
 	public String previewEdit() {
 		StringBuilder sb = new StringBuilder();
+		sb.append("ALTER PUBLIC TABLE ").append(tableNameField.getDefaultValue());
 		Iterable<Row> rows = userLogTable.getTable().getRows();
-		for(Row r: CH.sort(rows, COMPARATOR_WARNING_FIRST)) {
+		//this contains the original column names
+		Set<String> toDelete = new HashSet<String>();
+		for(Row r: CH.sort(rows, COMPARATOR_DELETE_COLUMN_FIRST)) {
 			Byte type = (Byte)r.get("type");
-			if(canIgnoreRow(r))
+			if(canIgnoreRow(r, toDelete))
 				continue;
 			switch(type) {
 				case AmiUserEditMessage.ACTION_TYPE_DELETE:
+					String origColRef =(String) r.get("ocr");
+					toDelete.add(origColRef);
+					if(origColNames.contains(origColRef))
+						sb.append(" DROP ").append(origColRef).append(',');
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_ADD:
 					break;
@@ -1194,8 +1266,16 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	protected void revertEdit() {
 		super.revertEdit();
 		//also revert the table
-		importFromText(sql, new StringBuilder());
 		userLogTable.clearRows();
+		colNames2rows_Table.clear();
+		existingColNames.clear();
+		origColumnConfig.clear();
+		origColNames.clear();
+		editChains.clear();
+
+		importFromText(sql, new StringBuilder());
+		
+		
 
 	}
 	
@@ -1291,6 +1371,24 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	   public void drop() {
 	        this.active = false;
 	    }
+	}
+	
+	public static void main(String[] args) {
+		LinkedList<String> columnChain = new LinkedList<String>();
+		columnChain.add("A");
+		columnChain.add("A1");
+		columnChain.add("A2");
+		columnChain.add("A3");
+
+
+		
+//		LinkedList<String> columnChain2 = new LinkedList<String>();
+//		columnChain2.add("B");
+//		columnChain2.add("A2");
+//		columnChain2.add("A");
+//		
+//		System.out.println(columnChain);
+		
 	}
 
 }
