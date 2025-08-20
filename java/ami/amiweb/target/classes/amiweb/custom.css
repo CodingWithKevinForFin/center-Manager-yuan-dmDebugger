@@ -161,6 +161,15 @@ add user log icons for column editor
   background-position:left center;
   color:#888102;
 }
+.column_editor_icon_position_move{
+  float:left;
+  background-image:url('rsc/portlet_icon_move.png');
+  width:18px;
+  height:18px;
+  background-repeat:no-repeat;
+  background-position:left center;
+  color:lightskyblue;
+}
 /*
 end
 */
