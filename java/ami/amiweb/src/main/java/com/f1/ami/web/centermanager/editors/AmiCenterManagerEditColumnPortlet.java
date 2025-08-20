@@ -123,6 +123,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	//private Map<String, Set<String>> usedNames = new HashMap<String, Set<String>>();
 	private Set<String> origColNames = new HashSet<String>();
 	private Set<LinkedList<String>> editChains = new HashSet<LinkedList<String>>();
+	private Map<String, Integer> positionByColNames = new HashMap<String, Integer>();
+	private Map<String, String> typeByColNames = new HashMap<String, String>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
 		super(config, isAdd);
@@ -221,9 +223,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				new BasicTable(new Class<?>[] { String.class, String.class, String.class, String.class, String.class }, new String[] { "type", "oldColumn", "targetColumn", "ocr", "description" }), "User Changes");
 
 		MapWebCellFormatter typeFormatter = new MapWebCellFormatter(new BasicTextFormatter());
-		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_ADD, "Add", "_cna=column_editor_icon_add", "&nbsp;&nbsp;&nbsp;&nbsp;Add");
-		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_DELETE, "Delete", "_cna=column_editor_icon_delete", "&nbsp;&nbsp;&nbsp;&nbsp;Delete");
-		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_UPDATE, "Edit", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Edit");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN, "Add", "_cna=column_editor_icon_add", "&nbsp;&nbsp;&nbsp;&nbsp;Add");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN, "Delete", "_cna=column_editor_icon_delete", "&nbsp;&nbsp;&nbsp;&nbsp;Delete");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN, "Rename Column", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Rename Column");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN, "Modify Column", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Modify Column");
+		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN, "Move Column", "_cna=column_editor_icon_position_move", "&nbsp;&nbsp;&nbsp;&nbsp;Move Column");
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE, "Rename Table", "_cna=column_editor_icon_update", "&nbsp;&nbsp;&nbsp;&nbsp;Rename Table");
 		typeFormatter.addEntry(AmiUserEditMessage.ACTION_TYPE_WARNING, "Warning", "_cna=portlet_icon_warning", "&nbsp;&nbsp;&nbsp;&nbsp;Warning");
 
@@ -290,7 +294,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void onRowInserted(Row r) {
 		String colName =(String) r.get("columnName");
 		int pos = r.getLocation();
-		Row logRow = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD, null, colName, colName, "A new column `" + colName + '`' + " is added");
+		Row logRow = userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN, null, colName, colName, "A new column `" + colName + '`' + " is added");
 		colNames2rows_Log.put(colName, logRow);
 		LinkedList<String> newChain = new LinkedList<String>();
 		newChain.add(colName);
@@ -300,7 +304,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void onRowDeleted(Row r) {
 		String colName =(String) r.get("columnName");
 		String originalColRef = findHeadFromChain(colName);
-		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DELETE, colName, colName, originalColRef, "The column`" + colName + '`' + " is removed from the table");
+		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN, colName, colName, originalColRef, "The column`" + colName + '`' + " is removed from the table");
 		if(r != colNames2rows_Table.get(colName)) // this means this is a duplicate row, don't update colnames and colNames2rows_Table
 			return;
 		existingColNames.remove(colName);
@@ -419,7 +423,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 					if(!chainTailfound)
 						throw new IllegalStateException("Chain tail not found");
 					
-					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, old, colName, originalColumnRef, "The column `" + old + '`' + " has been renamed to " + '`' + nuw + '`');
+					userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN, old, colName, originalColumnRef, "The column `" + old + '`' + " has been renamed to " + '`' + nuw + '`');
 
 					
 					Row columnRow = colNames2rows_Table.get(old);
@@ -431,15 +435,15 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			//TODO: 
 			case UPDATE_TYPE_COLUMN_TYPE:
 				originalColumnRef = findHeadFromChain(colName);
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef, "The data type for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN, colName, colName, originalColumnRef, "The data type for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			case UPDATE_TYPE_COLUMN_OPTIONS:
 				originalColumnRef = findHeadFromChain(colName);
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef,  "The column options for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN, colName, colName, originalColumnRef,  "The column options for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			case UPDATE_TYPE_COLUMN_POSITION:
 				originalColumnRef = findHeadFromChain(colName);
-				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_UPDATE, colName, colName, originalColumnRef, "The position for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
+				userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN, colName, colName, originalColumnRef, "The position for column `" + colName + '`' + " has been changed from " + '`' + old + '`' + " to " + '`' + nuw + '`');
 				break;
 			default:
 				throw new NullPointerException("Unknown type: " + type);
@@ -531,6 +535,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				LinkedList<String> singletonChain = new LinkedList<String>();
 				singletonChain.add(columnName);
 				editChains.add(singletonChain);
+				positionByColNames.put(columnName, position);
 			}
 			
 		}
@@ -1205,7 +1210,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	//if a column is renamed, moved, and finally dropped, then all the previous actions can be ignored
 	private boolean canIgnoreRow(Row r, Set<String> toDelete) {
 		Byte type = (Byte)r.get("type");
-		if(AmiUserEditMessage.ACTION_TYPE_DELETE == type || AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE == type)
+		if(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN == type || AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE == type)
 			return false;
 		String origColName =(String) r.get("ocr");
 		if(toDelete.contains(origColName))
@@ -1221,9 +1226,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			Byte type2 = (Byte)o2.get("type");
 			int score1 = 0;
 			int score2 = 0;
-			if(type1 == AmiUserEditMessage.ACTION_TYPE_DELETE)
+			if(type1 == AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN)
 				score1 = 1;
-			if(type2 == AmiUserEditMessage.ACTION_TYPE_DELETE)
+			if(type2 == AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN)
 				score2 = 1;
 			return -OH.compare(score1, score2);
 		}
@@ -1239,20 +1244,28 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		Set<String> toDelete = new HashSet<String>();
 		for(Row r: CH.sort(rows, COMPARATOR_DELETE_COLUMN_FIRST)) {
 			Byte type = (Byte)r.get("type");
+			String curColName = (String) r.get("targetColumn");
+			String origColRef =(String) r.get("ocr");
 			if(canIgnoreRow(r, toDelete))
 				continue;
 			switch(type) {
-				case AmiUserEditMessage.ACTION_TYPE_DELETE:
-					String origColRef =(String) r.get("ocr");
+				case AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN:
 					toDelete.add(origColRef);
 					if(origColNames.contains(origColRef))
 						sb.append(" DROP ").append(origColRef).append(',');
 					break;
-				case AmiUserEditMessage.ACTION_TYPE_ADD:
+				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
+					sb.append(" ADD ").append(origColRef).append(',');
 					break;
-				case AmiUserEditMessage.ACTION_TYPE_UPDATE:
+				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
+					String newType = null;
+					sb.append(" RENAME ").append(curColName).append(" TO ").append(',');
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
+					sb.append(" MODIFY ").append(curColName).append(" AS ").append(',');
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
+					sb.append(" MOVE ").append(curColName).append(',');
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_WARNING:
 				
@@ -1340,38 +1353,6 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		
 	}
 	
-	public static class ColumnNode {
-	   public String name;
-	   public String type;
-	   public int position;
-	   public boolean active = true;
-
-	   public ColumnNode next; // link to next rename
-
-	   public ColumnNode(String name, String type, int pos) {
-	        this.name = name;
-	        this.type = type;
-	        this.position = pos;
-	    }
-
-	   public void rename(String newName) {
-	        ColumnNode renamed = new ColumnNode(newName, this.type, this.position);
-	        renamed.active = this.active;
-	        this.next = renamed;
-	    }
-
-	   public void move(int newPos) {
-	        this.position = newPos;
-	    }
-
-	   public void changeType(String newType) {
-	        this.type = newType;
-	    }
-
-	   public void drop() {
-	        this.active = false;
-	    }
-	}
 	
 	public static void main(String[] args) {
 		LinkedList<String> columnChain = new LinkedList<String>();

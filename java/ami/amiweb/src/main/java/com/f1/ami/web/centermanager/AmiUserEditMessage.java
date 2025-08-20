@@ -1,9 +1,23 @@
 package com.f1.ami.web.centermanager;
 
 public class AmiUserEditMessage {
-	public static final byte ACTION_TYPE_ADD = 1;
-	public static final byte ACTION_TYPE_DELETE = 2;
-	public static final byte ACTION_TYPE_UPDATE = 3;
-	public static final byte ACTION_TYPE_RENAME_TABLE = 4;
-	public static final byte ACTION_TYPE_WARNING = 5;
+	//ALTER TABLE ADD ...
+	public static final byte ACTION_TYPE_ADD_COLUMN = 1;
+	
+	//ALTER TABLE DROP ...
+	public static final byte ACTION_TYPE_DROP_COLUMN = 2;
+	
+	//ALTER TABLE RENAME ...
+	public static final byte ACTION_TYPE_RENAME_COLUMN = 3;
+	
+	//ALTER TABLE MODIFY ...
+	public static final byte ACTION_TYPE_MODIFY_COLUMN = 4;
+	
+	//ALTER TABLE MOVE ...
+	public static final byte ACTION_TYPE_MOVE_COLUMN = 5;
+	
+	//RENAME TABLE ...
+	public static final byte ACTION_TYPE_RENAME_TABLE = 6;
+	
+	public static final byte ACTION_TYPE_WARNING = 7;
 }
