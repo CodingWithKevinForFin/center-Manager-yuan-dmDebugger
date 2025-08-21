@@ -100,7 +100,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	public static final String KEY_COLUMN_OPTIONS = "options";
 	public static final String KEY_COLUMN_POS = "position";
 	
-
+	public static final Set<Character> RESERVED_COLUMN_NAMES = CH.s(AmiConsts.RESERVED_PARAM_AMIID, AmiConsts.RESERVED_PARAM_MODIFIED_ON, AmiConsts.RESERVED_PARAM_NOW, AmiConsts.RESERVED_PARAM_CREATED_ON, AmiConsts.RESERVED_PARAM_REVISION, AmiConsts.RESERVED_PARAM_TYPE, AmiConsts.RESERVED_PARAM_ID, AmiConsts.RESERVED_PARAM_EXPIRED, AmiConsts.RESERVED_PARAM_APPLICATION);
+	
 	final private AmiWebService service;
 	final private FormPortlet tableInfoPortlet;
 	final private FormPortletTextField tableNameField;
@@ -374,6 +375,57 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		colNames2rows_Table.remove(colName);
 				
 	}
+	
+//	public boolean isReservedName(String cname, byte type) {
+//		if (cname.length() == 1) {
+//			boolean isReserved;
+//			switch (cname.charAt(0)) {
+//				case AmiConsts.RESERVED_PARAM_APPLICATION:
+//					if (type != AmiTable.TYPE_ENUM && type != AmiTable.TYPE_STRING)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type String");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_ID:
+//					if (clazz != String.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type String");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_EXPIRED:
+//					if (clazz != Long.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type LONG");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_REVISION:
+//					if (clazz != Integer.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type INT");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_MODIFIED_ON:
+//					if (clazz != Long.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type LONG");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_AMIID:
+//					if (clazz != Long.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type LONG");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_CREATED_ON:
+//					if (clazz != Long.class)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type LONG");
+//					isReserved = true;
+//					break;
+//				case AmiConsts.RESERVED_PARAM_TYPE:
+//					if (type != AmiTable.TYPE_ENUM)
+//						throw new RuntimeException("Reserved column " + cname + " must be of type ENUM");
+//					isReserved = true;
+//					break;
+//				default:
+//					isReserved = false;
+//			}
+//			if (isReserved && CH.isntEmpty(options))
+//				throw new RuntimeException("options not allowed on reserved column " + cname + ": " + options);
+//	}
 	
 	
 	private void onRowUpdated(Row old, Row nuw) {
@@ -1066,6 +1118,22 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String type = (String) r.get("dataType");
 		String nuwColName = (String) r.get("columnName");
 		String oldColName = (String) origRow.get("columnName");
+		
+		//RULE: Reserved Columns Check
+		//reserved columns cannot be modified to anything else
+		if(oldColName.length() == 1 && RESERVED_COLUMN_NAMES.contains(oldColName.charAt(0))) {
+			String warning = "Can not modify reserved column: " + oldColName.charAt(0);
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, oldColName, oldColName, null, warning);
+			revertEditOnColumn(origRow, warning);
+			return;
+		}
+		//normal columns cannot be renamed to reserved columns
+		if(nuwColName.length() == 1 && RESERVED_COLUMN_NAMES.contains(nuwColName.charAt(0))) {
+			String warning = "Can not rename column " + oldColName + " to reserved column name " + nuwColName.charAt(0);
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, oldColName, oldColName, null, warning);
+			revertEditOnColumn(origRow, warning);
+			return;
+		}
 		
 		//RULE0: Check new value validity(For example, empty string is not allowed)
 		if(SH.isnt(nuwColName)) {
