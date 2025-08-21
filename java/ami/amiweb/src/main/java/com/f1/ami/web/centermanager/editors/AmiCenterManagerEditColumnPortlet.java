@@ -972,8 +972,25 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	}
 	
-	private void revertEdit(Row oldRow) {
-		
+	private void revertEdit(Row oldRow, String warning) {
+		//find the row being edited
+		String colName = (String)oldRow.get("columnName");
+		Row rowEdited = null;
+		for(Row r: columnMetadata.getTable().getRows()) {
+			if(colName.equals(r.get("columnName"))) {
+				rowEdited = r;
+				break;
+			}	
+		}
+		for(Entry<String, Object> e: oldRow.entrySet()) {
+			String key = e.getKey();
+			String val = (String) e.getValue();
+			if("true".equals(val) || "false".equals(val))
+				rowEdited.put(key, Caster_Boolean.INSTANCE.cast(val));
+			else
+				rowEdited.put(key, val);
+		}	
+		AmiCenterManagerUtils.popDialog(service, warning + ".\r Reverting editing", "Error Editing Column");
 	}
 
 
@@ -1005,33 +1022,61 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String type =(String) r.get("dataType");
 		
 		//RULE0: COMPACT/BITMAP directive only supported for STRING columns
-		if((isAscii || isBitmap || isCompact) && !"String".equalsIgnoreCase(type))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII/COMPACT/BITMAP directive only supported for STRING columns");
+		if((isAscii || isBitmap || isCompact) && !"String".equalsIgnoreCase(type)) {
+			String warning = "ASCII/COMPACT/BITMAP directive only supported for STRING columns";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow, warning);
+			return;
+		}
 
 		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
-		if(isOndisk && (isAscii || isBitmap || isEnum))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK can not be used in conjunction with other supplied directives");
+		if(isOndisk && (isAscii || isBitmap || isEnum)) {
+			String warning = "ONDISK can not be used in conjunction with other supplied directives";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow, warning);
+			return;
+		}
 		
 		//RULE2: BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
-		if(isCompact && isBitmap)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP and COMPACT directive are mutually exclusive");
+		if(isCompact && isBitmap) {
+			String warning = "BITMAP and COMPACT directive are mutually exclusive";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow, warning);
+			return;
+		}
 
 
 		//RULE3: ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
-		if(isAscii && !isCompact)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII directive only supported for STRING columns with COMPACT option");
+		if(isAscii && !isCompact) {
+			String warning = "ASCII directive only supported for STRING columns with COMPACT option";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow,warning);
+			return;
+		}
 
 		//RULE4: ONDISK directive only supported for STRING and BINARY columns
-		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK directive only supported for STRING and BINARY columns");
+		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type)) {
+			String warning = "ONDISK directive only supported for STRING and BINARY columns";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow,warning);
+			return;
+		}
 		
 		//RULE5: cache value cannot be empty
-		if(isCache && !isValidCacheValue(cacheValue))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
+		if(isCache && !isValidCacheValue(cacheValue)) {
+			String warning = "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow, warning);
+			return;
+		}
 		
 		//RULE6: need to switch on cache before configuring cache value
-		if(SH.is(cacheValue) && !isCache) 
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Need to enable cache before configuring cache value");
+		if(SH.is(cacheValue) && !isCache) {
+			String warning = "Need to enable cache before configuring cache value";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, warning);
+			revertEdit(origRow, warning);
+			return;
+		}
 		
 		
 		
