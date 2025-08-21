@@ -1305,7 +1305,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN == type || AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE == type)
 			return false;
 		String origColName =(String) r.get("ocr");
-		if(toDelete.contains(origColName))
+		if(toDelete.contains(origColName) && type != AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN)
 			System.out.println("The column can be ignored because its original column reference " + origColName + " has been removed");
 		return toDelete.contains(origColName);
 	}
@@ -1319,9 +1319,14 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			int score1 = 0;
 			int score2 = 0;
 			if(type1 == AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN)
+				score1 = 2;
+			else if(type1 == AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE)
 				score1 = 1;
+			
 			if(type2 == AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN)
-				score2 = 1;
+				score2 = 2;
+			else if(type2 == AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE)
+				score1 = 1;
 			return -OH.compare(score1, score2);
 		}
 
@@ -1330,11 +1335,16 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	@Override
 	public String previewEdit() {
 		StringBuilder sb = new StringBuilder();
+		if(renameTableLogRow != null) {
+			String sql = "RENAME TABLE " + tableNameField.getDefaultValue() + " TO " + tableNameField.getValue();
+			sb.append(sql).append(';').append(SH.NEWLINE);
+		}
 		sb.append("ALTER PUBLIC TABLE ").append(tableNameField.getDefaultValue());
 		Iterable<Row> rows = userLogTable.getTable().getRows();
 		//this contains the original column names
 		Set<String> toDelete = new HashSet<String>();
 		for(Row r: CH.sort(rows, COMPARATOR_DELETE_COLUMN_FIRST)) {
+			String sql = (String) r.get("sql");
 			Byte type = (Byte)r.get("type");
 			String curColName = (String) r.get("targetColumn");
 			String origColRef =(String) r.get("ocr");
@@ -1347,18 +1357,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 						sb.append(" DROP ").append(origColRef).append(',');
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
-					sb.append(" ADD ").append(origColRef).append(',');
-					break;
 				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
-					String newType = null;
-					sb.append(" RENAME ").append(curColName).append(" TO ").append(',');
-					break;
 				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
-					sb.append(" MODIFY ").append(curColName).append(" AS ").append(',');
+					sb.append(sql).append(", ");
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
-					sb.append(" MOVE ").append(curColName).append(',');
-					break;
 				case AmiUserEditMessage.ACTION_TYPE_WARNING:
 				
 			}
