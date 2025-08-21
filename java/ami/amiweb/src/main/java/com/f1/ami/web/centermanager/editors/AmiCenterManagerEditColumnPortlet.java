@@ -77,10 +77,18 @@ import com.f1.utils.string.ExpressionParserException;
 import com.f1.utils.string.sqlnode.CreateTableNode;
 import com.f1.utils.structs.MapInMap;
 import com.f1.utils.structs.Tuple2;
-import com.f1.utils.structs.Tuple3;
 import com.f1.utils.structs.table.BasicTable;
 import com.f1.utils.structs.table.SmartTable;
-import com.f1.utils.structs.IntKeyMap;
+
+/*
+ * To figure out the minimal path to get from the original schema to the edited schema, a naive schema diffing will not work: Think of this scneario where, 
+ * 
+ * Original schema: (a,b,c,d)
+ * First delete column c: -> (a,b,d)
+ * Then rename d to c : -> (a,b,c)
+ * A pure schema diffing will result in -> "DROP COLUMN d".
+ * But in reality it should be: "DROP COLUMN C, RENAME D TO C"
+ */
 
 public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractEditCenterObjectPortlet
 		implements WebContextMenuListener, WebContextMenuFactory, FastTableEditListener {
@@ -1305,9 +1313,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN == type || AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE == type)
 			return false;
 		String origColName =(String) r.get("ocr");
-		if(toDelete.contains(origColName) && type != AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN)
+		//anything that comes before the delete can be i
+		boolean canIgnore = toDelete.contains(origColName) && type != AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN;
+		if(canIgnore)
 			System.out.println("The column can be ignored because its original column reference " + origColName + " has been removed");
-		return toDelete.contains(origColName);
+		return canIgnore;
 	}
 	
 	public final static Comparator<Row> COMPARATOR_DELETE_COLUMN_FIRST = new Comparator<Row>() {
@@ -1358,6 +1368,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 					break;
 				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
 				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
+				case AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN:
 				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
 					sb.append(sql).append(", ");
 					break;
