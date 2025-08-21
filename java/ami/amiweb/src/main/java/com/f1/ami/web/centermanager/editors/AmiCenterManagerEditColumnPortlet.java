@@ -990,12 +990,47 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			throw new UnsupportedOperationException("Only one row is allowed to be edited at a time");
 		Row r = editedTable.getRow(0);
 		Row origRow = origTable.getRow(0);
-		//RULE0: check duplicate column name
-//		String originalColName = (String)origRow.getValue("columnName");
-//		String nuwColName = (String)r.getValue("columnName");
-//		if(!SH.equals(originalColName, nuwColName) && existingColNames.contains(nuwColName)) {
-//			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING,  (String) r.get("columnName"), "Duplicate column name:" + nuwColName);
-//		}
+		
+		//check mutual exclusive column options
+		Boolean isCompact = Caster_Boolean.INSTANCE.cast(r.get("compact"));
+		Boolean isAscii = Caster_Boolean.INSTANCE.cast(r.get("ascii"));
+		Boolean isBitmap = Caster_Boolean.INSTANCE.cast(r.get("bitmap"));
+		Boolean isOndisk = Caster_Boolean.INSTANCE.cast(r.get("ondisk"));
+		Boolean isEnum = Caster_Boolean.INSTANCE.cast(r.get("enum"));
+		Boolean isCache = Caster_Boolean.INSTANCE.cast(r.get("cache"));
+		String cacheValue = (String) r.get("cacheValue");
+		String type =(String) r.get("dataType");
+		
+		//RULE0: BITMAP directive only supported for STRING columns
+		if(isBitmap && !"String".equalsIgnoreCase(type))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP directive only supported for STRING columns");
+
+		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
+		if(isOndisk && (isAscii || isBitmap || isEnum))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK can not be used in conjunction with other supplied directives");
+		
+		//RULE2: BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
+		if(isCompact && isBitmap)
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP and COMPACT directive are mutually exclusive");
+
+
+		//RULE3: ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
+		if(isAscii && !isCompact)
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII directive only supported for STRING columns with COMPACT option");
+
+		//RULE4: ONDISK directive only supported for STRING and BINARY columns
+		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK directive only supported for STRING and BINARY columns");
+		
+		//RULE5: cache value cannot be empty
+		if(isCache && !isValidCacheValue(cacheValue))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
+		
+		//RULE6: need to switch on cache before configuring cache value
+		if(SH.is(cacheValue) && !isCache) 
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Need to enable cache before configuring cache value");
+		
+		
 		
 		
 		//update the log table if the column name has changed for added empty row
@@ -1035,41 +1070,6 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				f.setValue((String) val);
 			}
 		}
-		
-		
-		//check mutual exclusive column options
-		Boolean isCompact = Caster_Boolean.INSTANCE.cast(r.get("compact"));
-		Boolean isAscii = Caster_Boolean.INSTANCE.cast(r.get("ascii"));
-		Boolean isBitmap = Caster_Boolean.INSTANCE.cast(r.get("bitmap"));
-		Boolean isOndisk = Caster_Boolean.INSTANCE.cast(r.get("ondisk"));
-		Boolean isEnum = Caster_Boolean.INSTANCE.cast(r.get("enum"));
-		Boolean isCache = Caster_Boolean.INSTANCE.cast(r.get("cache"));
-		String cacheValue = (String) r.get("cacheValue");
-		String type =(String) r.get("dataType");
-		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
-		if(isOndisk && (isAscii || isBitmap || isEnum))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK can not be used in conjunction with other supplied directives");
-		
-		//RULE2: BITMAP and COMPACT directive are mutually exclusive, aka disallow (isCompact && isBitmap)
-		if(isCompact && isBitmap)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP and COMPACT directive are mutually exclusive");
-
-
-		//RULE3: ASCII directive only supported for STRING columns with COMPACT option, aka disallow (isAscii && !isCompact)
-		if(isAscii && !isCompact)
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII directive only supported for STRING columns with COMPACT option");
-
-		//RULE4: ONDISK directive only supported for STRING and BINARY columns
-		if(isOndisk && !"String".equalsIgnoreCase(type) && !"Binary".equalsIgnoreCase(type))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ONDISK directive only supported for STRING and BINARY columns");
-		
-		//RULE5: cache value cannot be empty
-		if(isCache && !isValidCacheValue(cacheValue))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Cache value cannot be empty. Supported units are: KB, MB, GB and TB (if no unit is specified, then bytes)");
-		
-		//RULE6: need to switch on cache before configuring cache value
-		if(SH.is(cacheValue) && !isCache) 
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "Need to enable cache before configuring cache value");
 		
 	}
 	
