@@ -326,7 +326,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	}
 	
 	//need to update the "Add" message in the log table for empty row
-	private void onEmptyRowUpdated(String nuwColumnName, String oldColumnName) {
+	private void onEmptyRowUpdated(String nuwColumnName, String oldColumnName, String nuwType, String oldType) {
 		String originalColumnRef = null;
 		//only one node in the chain for newly added 
 		for(LinkedList<String> chain : editChains) {
@@ -345,7 +345,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		System.out.println(curColumns);
 		
 		Row logRow = colNames2rows_Log.get(oldColumnName);
-		logRow.put("description", "A new column `" + nuwColumnName + '`' + " is added");
+		logRow.put("description", "A new column `" + nuwColumnName + " " + nuwType + '`' + " is added");
+		logRow.put("sql", "ADD " + nuwColumnName + " " + nuwType);
 		logRow.put("targetColumn", nuwColumnName);
 		logRow.put("ocr", originalColumnRef);
 		colNames2rows_Log.remove(oldColumnName);
@@ -370,21 +371,23 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private void onRowUpdated(Row old, Row nuw) {
 		String oldColName = (String) old.get("columnName");
 		String nuwColName = (String) nuw.get("columnName");
-		String oldType = (String) old.get("dataType");
-		String nuwType = (String) nuw.get("dataType");
+		String oldDataType = (String) old.get("dataType");
+		String nuwDataType = (String) nuw.get("dataType");
 		String oldOption = getOptionStringForRow(old);
 		String nuwOption = getOptionStringForRow(nuw);
+		String nuwType = nuwDataType + " " + nuwOption;
+		String oldType = oldDataType + " " + oldOption;
 		//first check if the update happens on original rows or newly added rows
 		Row logRowAdd = colNames2rows_Log.get(oldColName);
-		if(logRowAdd != null && !OH.eq(nuwColName, oldColName))
-			onEmptyRowUpdated(nuwColName, oldColName);
-		else {
+		if(logRowAdd != null) { //&& !OH.eq(nuwColName, oldColName)) {
+			onEmptyRowUpdated(nuwColName, oldColName, nuwType, oldType);
+		} else {
 			System.out.println("the update is happening on orig rows");
 			 //if it is only the column name that has changed
-			if(!SH.equals(oldColName, nuwColName) && SH.equals(oldType, nuwType) && isSameColumnOptions(old, nuw))
+			if(!SH.equals(oldColName, nuwColName) && SH.equals(oldDataType, nuwDataType) && isSameColumnOptions(old, nuw))
 				onRowUpdated_Rename(oldColName, nuwColName);
-			else if(!SH.equalsIgnoreCase(oldType, nuwType) || !oldOption.equalsIgnoreCase(nuwOption))
-				onRowUpdated_Modify(oldColName, nuwColName, nuwType + " " + nuwOption);
+			else if(!SH.equalsIgnoreCase(oldDataType, nuwDataType) || !oldOption.equalsIgnoreCase(nuwOption))
+				onRowUpdated_Modify(oldColName, nuwColName, nuwType);
 		}
 	}
 	
@@ -1136,8 +1139,14 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		if(isAdd) { //|| !origColumnConfig.containsKey((String)origRow.get("columnName"))
 			String colNameNuw = (String) r.get("columnName");
 			String colNameOld = (String) origRow.get("columnName");
+			String oldDataType = (String) origRow.get("dataType");
+			String nuwDataType = (String) r.get("dataType");
+			String oldOption = getOptionStringForRow(origRow);
+			String nuwOption = getOptionStringForRow(r);
+			String nuwType = nuwDataType + " " + nuwOption;
+			String oldType = oldDataType + " " + oldOption;
 			if(!colNameNuw.equals(colNameOld))
-				onEmptyRowUpdated(colNameNuw, colNameOld);
+				onEmptyRowUpdated(colNameNuw, colNameOld, nuwType, oldType);
 		}else {
 			onRowUpdated(origRow, r);
 		}
