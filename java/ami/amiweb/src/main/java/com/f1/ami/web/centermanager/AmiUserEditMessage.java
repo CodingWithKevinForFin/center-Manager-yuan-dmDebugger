@@ -7,6 +7,7 @@ public class AmiUserEditMessage {
 	//ALTER TABLE DROP ...
 	public static final byte ACTION_TYPE_DROP_COLUMN = 2;
 	
+	//The below are considered updates to a column/////////
 	//ALTER TABLE RENAME ...
 	public static final byte ACTION_TYPE_RENAME_COLUMN = 3;
 	
@@ -15,6 +16,8 @@ public class AmiUserEditMessage {
 	
 	//ALTER TABLE MOVE ...
 	public static final byte ACTION_TYPE_MOVE_COLUMN = 5;
+	///////////////////////////////////////////////////////
+	
 	
 	//RENAME TABLE ...
 	public static final byte ACTION_TYPE_RENAME_TABLE = 6;
