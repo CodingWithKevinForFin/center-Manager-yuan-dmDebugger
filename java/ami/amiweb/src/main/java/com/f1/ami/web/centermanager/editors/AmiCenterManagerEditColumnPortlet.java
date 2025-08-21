@@ -305,6 +305,13 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String colName =(String) r.get("columnName");
 		String originalColRef = findHeadFromChain(colName);
 		
+		int toDeleteColumnIndex = curColumns.indexOf(colName);
+		if(toDeleteColumnIndex == -1)
+			throw new IllegalStateException("The column to delete does not exist: " + colName);
+		curColumns.remove(colName);
+		
+		System.out.println(curColumns);
+		
 		userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN, colName, colName, originalColRef, "The column`" + colName + '`' + " is removed from the table");
 		if(r != colNames2rows_Table.get(colName)) // this means this is a duplicate row, don't update colnames and colNames2rows_Table
 			return;
