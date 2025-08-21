@@ -972,6 +972,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	}
 	
+	private void revertEdit(Row oldRow) {
+		
+	}
 
 
 	@Override
@@ -1001,9 +1004,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String cacheValue = (String) r.get("cacheValue");
 		String type =(String) r.get("dataType");
 		
-		//RULE0: BITMAP directive only supported for STRING columns
-		if(isBitmap && !"String".equalsIgnoreCase(type))
-			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "BITMAP directive only supported for STRING columns");
+		//RULE0: COMPACT/BITMAP directive only supported for STRING columns
+		if((isAscii || isBitmap || isCompact) && !"String".equalsIgnoreCase(type))
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, (String) r.get("columnName"), null, "ASCII/COMPACT/BITMAP directive only supported for STRING columns");
 
 		//RULE1: ONDISK can not be used in conjunction with other supplied directives,aka (isOndisk && (isAscii || isBitmap || isEnum)) should be disallowed
 		if(isOndisk && (isAscii || isBitmap || isEnum))
