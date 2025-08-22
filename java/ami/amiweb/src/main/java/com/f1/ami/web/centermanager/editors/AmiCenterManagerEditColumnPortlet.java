@@ -21,6 +21,7 @@ import com.f1.ami.amicommon.AmiConsts;
 import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsResponse;
+import com.f1.ami.amicommon.msg.AmiDatasourceColumn;
 import com.f1.ami.amiscript.AmiDebugMessage;
 import com.f1.ami.web.AmiWebFormatterManager;
 import com.f1.ami.web.AmiWebService;
@@ -101,6 +102,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	public static final String KEY_COLUMN_POS = "position";
 	
 	public static final Set<Character> RESERVED_COLUMN_NAMES = CH.s(AmiConsts.RESERVED_PARAM_AMIID, AmiConsts.RESERVED_PARAM_MODIFIED_ON, AmiConsts.RESERVED_PARAM_NOW, AmiConsts.RESERVED_PARAM_CREATED_ON, AmiConsts.RESERVED_PARAM_REVISION, AmiConsts.RESERVED_PARAM_TYPE, AmiConsts.RESERVED_PARAM_ID, AmiConsts.RESERVED_PARAM_EXPIRED, AmiConsts.RESERVED_PARAM_APPLICATION);
+	public static final byte ADD_RESERVED_COLUMN_DFLT = 0;
+	public static final byte ADD_RESERVED_COLUMN_BEFORE = 1;
+	public static final byte ADD_RESERVED_COLUMN_AFTER = 2;
+	
+	
 	
 	final private AmiWebService service;
 	final private FormPortlet tableInfoPortlet;
@@ -277,6 +283,98 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			return;
 		}
 		super.onButtonPressed(portlet, button);
+	}
+	
+	private void insertEmptyReservedColumnRow(char c) {
+		String reservedName = SH.toString(c);
+		if(existingColNames.contains(reservedName)) {
+			String warning = "Reserved Column " + "`" + reservedName + "`" + " already exists";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, reservedName, null, null, warning);
+			return;
+		}
+		String type = null;
+		switch(c) {
+			case 'A':
+			case 'P':
+				type = AmiConsts.TYPE_NAME_STRING;
+				break;
+			case 'T':
+				type = AmiConsts.TYPE_NAME_ENUM;
+				break;
+			case 'C':
+			case 'D':	
+			case 'E':
+			case 'M':
+			case 'W':
+				type = AmiConsts.TYPE_NAME_LONG;
+				break;
+			//don't think you could add an 'I':
+			//case 'I':
+				
+			case 'V':
+				type = AmiConsts.TYPE_NAME_INTEGER;
+				break;
+			default:
+				throw new NullPointerException("Unknown reserved column: " + c);
+		}
+		if(type == null)
+			throw new NullPointerException("Unknown reserved column: " + c);
+		
+		String sql = "ADD " + c + " " + type;
+		Row r = columnMetadata.addRow(reservedName, type, null, false, false, false, false, false, false, false, false, null, -1);
+		existingColNames.add(reservedName);
+		colNames2rows_Table.put(reservedName, r);
+		onRowInserted(r, sql);
+		curColumns.add(reservedName);
+		System.out.println(curColumns);
+	}
+	
+	private void insertEmptyReservedColumnRowAt(char c, int i) {
+		String reservedName = SH.toString(c);
+		if(existingColNames.contains(reservedName)) {
+			String warning = "Reserved Column " + "`" + reservedName + "`" + " already exists";
+			userLogTable.addRow(AmiUserEditMessage.ACTION_TYPE_WARNING, null, reservedName, null, null, warning);
+			return;
+		}
+		String type = null;
+		switch(c) {
+			case 'A':
+			case 'P':
+				type = AmiConsts.TYPE_NAME_STRING;
+				break;
+			case 'T':
+				type = AmiConsts.TYPE_NAME_ENUM;
+				break;
+			case 'C':
+			case 'D':	
+			case 'E':
+			case 'M':
+			case 'W':
+				type = AmiConsts.TYPE_NAME_LONG;
+				break;
+			//don't think you could add an 'I':
+			//case 'I':
+				
+			case 'V':
+				type = AmiConsts.TYPE_NAME_INTEGER;
+				break;
+			default:
+				throw new NullPointerException("Unknown reserved column: " + c);
+		}
+		if(type == null)
+			throw new NullPointerException("Unknown reserved column: " + c);
+		
+		String sql = "ADD " + c + " " + type;
+		if(i == curColumns.size())
+			sql = sql + " AFTER " + curColumns.get(i - 1);
+		else
+			sql = sql + " BEFORE " + curColumns.get(i);
+		Row r = columnMetadata.addRowAt(i, reservedName, type, null, false, false, false, false, false, false, false, false, null, -1);
+		existingColNames.add(reservedName);
+		colNames2rows_Table.put(reservedName, r);
+		onRowInserted(r, sql);
+		curColumns.add(i, reservedName);
+		System.out.println(curColumns);
 	}
 
 	private void insertEmptyRow() {
@@ -642,7 +740,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				onUserEditStart();
 		}
 	}
-
+	
 	@Override
 	public void onContextMenu(WebTable table, String action) {
 		if (SH.startsWith(action, "add_column_")) {
@@ -653,8 +751,18 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			} else if (temp.startsWith("after")) {
 				insertEmptyRowAt(loc + 1);
 			}
-
-		} else if ("drop_column".equals(action)) {
+		} else if (SH.startsWith(action, "add_rc_")) {
+			char c = SH.toUpperCase(action.charAt(7));
+			if(action.toCharArray().length == 8)
+				insertEmptyReservedColumnRow(c);
+			else if("before".equals(action.substring(9, 15))) {
+				int loc = table.getSelectedRows().get(0).getLocation();
+				insertEmptyReservedColumnRowAt(c, loc);
+			} else if("after".equals(action.substring(9, 14))) {
+				int loc = table.getSelectedRows().get(0).getLocation();
+				insertEmptyReservedColumnRowAt(c, loc + 1);
+			}			
+		}  else if ("drop_column".equals(action)) {
 			for (Row r : table.getSelectedRows()) {
 				columnMetadata.removeRow(r);
 				if(isAdd)// || !origColumnConfig.containsKey((String)r.get("columnName")))
@@ -824,6 +932,35 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		// TODO Auto-generated method stub
 
 	}
+	
+	private static BasicWebMenu addReservedColumnsMenu(String title, byte addPosition, String col) {
+		BasicWebMenu reservedColsMenus = new BasicWebMenu(title, true);
+		String postfix = null;
+		switch(addPosition) {
+			case ADD_RESERVED_COLUMN_DFLT:
+				postfix = "";
+				break;
+			case ADD_RESERVED_COLUMN_BEFORE:
+				postfix = "_before_" + col;
+				break;
+			case ADD_RESERVED_COLUMN_AFTER:
+				postfix = "_after_" + col;
+				break;
+			
+		}
+		reservedColsMenus.add(new BasicWebMenuLink("A (AMI-Center)", true, "add_rc_a" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("C (Created Time)", true, "add_rc_c" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("D (AMI-ID)", true, "add_rc_d" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("E (Expires Time)", true, "add_rc_e" + postfix));
+		//don't think you can add an I
+		//reservedColsMenus.add(new BasicWebMenuLink("I (UniqueID)", true, "add_rc_i" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("M (Modified Time)", true, "add_rc_m" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("P (Application)", true, "add_rc_p" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("V (Revision)", true, "add_rc_v" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("T (Table Name)", true, "add_rc_t" + postfix));
+		reservedColsMenus.add(new BasicWebMenuLink("W (Current Time)", true, "add_rc_w" + postfix));
+		return reservedColsMenus;
+	}
 
 	@Override
 	public WebMenu createMenu(WebTable table) {
@@ -832,6 +969,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		int selectedRowSize = ftw.getSelectedRows().size();
 		if(ftw == columnMetadata.getTable()) {
 			m.add(new BasicWebMenuLink("Add Column", true, "add_column"));
+			BasicWebMenu reservedColsMenus = addReservedColumnsMenu("Add Reserved Column", ADD_RESERVED_COLUMN_DFLT, null);
+			m.add(reservedColsMenus);
 			if (ftw.getActiveRow() != null) {
 				m.add(new BasicWebMenuLink("Drop Column", true, "drop_column"));
 				switch (selectedRowSize) {
@@ -843,6 +982,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 						m.add(new BasicWebMenuLink("Move To Index...", true, "move_to"));
 						m.add(new BasicWebMenuLink("Add Column Before " + origColumnName, true, "add_column_before_" + origColumnName));
 						m.add(new BasicWebMenuLink("Add Column After " + origColumnName, true, "add_column_after_" + origColumnName));
+						m.add(addReservedColumnsMenu("Add Reserved Column Before", ADD_RESERVED_COLUMN_BEFORE, origColumnName));
+						m.add(addReservedColumnsMenu("Add Reserved Column After", ADD_RESERVED_COLUMN_AFTER, origColumnName ));
 						break;
 					default:
 						break;
