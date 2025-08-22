@@ -1555,7 +1555,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	public String previewEdit() {
 		StringBuilder sb = new StringBuilder();
 		if(renameTableLogRow != null) {
-			String sql = "RENAME TABLE " + tableNameField.getDefaultValue() + " TO " + tableNameField.getValue();
+			String sql = "RENAME TABLE " + AmiUtils.escapeVarName(tableNameField.getDefaultValue()) + " TO " + AmiUtils.escapeVarName(tableNameField.getValue());
 			sb.append(sql).append(';').append(SH.NEWLINE);
 		}
 		sb.append("ALTER PUBLIC TABLE ").append(tableNameField.getDefaultValue());
