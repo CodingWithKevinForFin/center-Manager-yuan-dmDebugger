@@ -1599,17 +1599,22 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	}
 	
 	//prevSql = "rename a to a1"; curSql = "rename a1 to a2", then resultant sql should be "rename a to a2"
+	//A more complex example: prevSql = "rename b to b1, rename c to d, move d before a"; curSql = "modify d as d_ string"
+	//To collapse them, we need to loop over the single sql in prevsql and see if each sql can collapse with cursql
 	public String collapseSql(String prevSql, String curSql) {
-		String  resultantSql = null;
+		StringBuilder  resultantSqlBuilder = new StringBuilder();
 		//break down prevSql
 		List<String> prevSqls = SH.splitToList(",", prevSql);
-		
-		
-		
-		
-		
-		
-		return resultantSql;
+		for(String prevSingleton: prevSqls) {
+			String resultSql = collapseSingletonSql(prevSingleton, curSql);
+			resultantSqlBuilder.append(resultSql);
+		}	
+		return resultantSqlBuilder.toString();
+	}
+	
+	public String collapseSingletonSql(String prevSingleton, String curSql) {
+		String resultSql = null;
+		return resultSql;
 	}
 	
 	
