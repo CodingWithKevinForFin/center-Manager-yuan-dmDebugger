@@ -1626,6 +1626,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
             Pattern.CASE_INSENSITIVE
         );
 	
+	public static final Pattern ADD_PATTERN =Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+	
 	public String collapseSingletonSql(String prevSingleton, String curSql) {
 		String resultSql = null;
 		String keyword_prev = SH.beforeFirst(prevSingleton, ' ');
@@ -1667,8 +1669,69 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				canCollapse = false;
 			}
 			
-		} else {
-			
+		} else if(SH.equals("MODIFY", keyword_prev)){
+			Matcher prevMatcher = MODIFY_PATTERN.matcher(prevSingleton);
+			String prev_oldName  = prevMatcher.group(1);
+            String prev_newName  = prevMatcher.group(2);
+            String prev_type = prevMatcher.group(3);
+			if(SH.equals("RENAME", keyword_cur)) {	   
+	            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+	            String cur_oldName = curMatcher.group(1);
+	            String cur_newName = curMatcher.group(2);
+	            
+	            if(SH.equals(prev_newName, cur_oldName)) {
+	            	canCollapse = true;
+					resultSql = "MODIFY " + prev_oldName + " AS " + cur_newName + " " + prev_type;
+	            }
+			}else if(SH.equals("MODIFY", keyword_cur)) {
+				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+				String cur_oldName  = curMatcher.group(1);
+	            String cur_newName  = curMatcher.group(2);
+	            String cur_type = curMatcher.group(3);
+	            
+	            if(SH.equals(prev_newName, cur_oldName)) {
+	            	canCollapse = true;
+					resultSql = "MODIFY " + prev_oldName + " AS " + cur_newName + " " + cur_type;
+	            }
+			}else if(SH.equals("DROP", keyword_cur)) {
+				String cur_col2Drop = SH.afterFirst(curSql, " ");
+				
+				 if(SH.equals(prev_newName, cur_col2Drop)) {
+					 canCollapse = true;
+					 resultSql = "DROP " + prev_oldName;
+				 }		
+			}else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
+				//no op
+				canCollapse = false;
+			}
+		} else if(SH.equals("DROP", keyword_prev)) {
+			//no op
+			canCollapse = false;
+		} else if(SH.equals("ADD", keyword_prev)) {
+			Matcher preMatcher = ADD_PATTERN.matcher(prevSingleton);
+			String prev_add_col_name = preMatcher.group(1);
+			if(SH.equals("RENAME", keyword_cur)) {	   
+	            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+	            String cur_oldName = curMatcher.group(1);
+	            String cur_newName = curMatcher.group(2);
+	            
+	            if(SH.equals(prev_add_col_name, cur_oldName)) {
+	            	String replaced = preMatcher.replaceFirst("ADD " + cur_newName + " $2");
+	            	canCollapse = true;
+					resultSql = replaced;
+	            }
+			}else if(SH.equals("MODIFY", keyword_cur)) {
+				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+				String cur_oldName  = curMatcher.group(1);
+	            String cur_newName  = curMatcher.group(2);
+	            String cur_type = curMatcher.group(3);
+	            
+	            if(SH.equals(prev_add_col_name, cur_oldName)) {
+	            	String replaced = preMatcher.replaceFirst("$1" + cur_newName + "$3");
+	            	canCollapse = true;
+					resultSql = replaced;
+	            }
+			}
 		}
 				
 		if(!canCollapse)
@@ -1742,11 +1805,19 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	
 	public static void main(String[] args) {
-		LinkedList<String> columnChain = new LinkedList<String>();
-		columnChain.add("A");
-		columnChain.add("A1");
-		columnChain.add("A2");
-		columnChain.add("A3");
+		String input = "ADD colA STRING NONULL AFTER colB";
+        String newName = "myNewCol";
+
+        Pattern pattern = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(input);
+
+        if (matcher.matches()) {
+        	String replaced = matcher.replaceFirst("ADD " + newName + " $2");
+            System.out.println("Original: " + input);
+            System.out.println("Replaced: " + replaced);
+        } else {
+            System.out.println("No match!");
+        }
 
 
 		
