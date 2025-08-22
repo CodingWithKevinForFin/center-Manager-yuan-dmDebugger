@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
@@ -1600,20 +1601,81 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//prevSql = "rename a to a1"; curSql = "rename a1 to a2", then resultant sql should be "rename a to a2"
 	//A more complex example: prevSql = "rename b to b1, rename c to d, move d before a"; curSql = "modify d as d_ string"
-	//To collapse them, we need to loop over the single sql in prevsql and see if each sql can collapse with cursql
+	//To collapse them, we need to loop over each single sql in prevsql and see if each sql can collapse with cursql
 	public String collapseSql(String prevSql, String curSql) {
 		StringBuilder  resultantSqlBuilder = new StringBuilder();
 		//break down prevSql
 		List<String> prevSqls = SH.splitToList(",", prevSql);
+		int collapseFailedAttempts = 0;
 		for(String prevSingleton: prevSqls) {
 			String resultSql = collapseSingletonSql(prevSingleton, curSql);
+			if(SH.equals(resultSql, prevSingleton))
+				collapseFailedAttempts++; 
 			resultantSqlBuilder.append(resultSql);
-		}	
+		}
+		boolean allCollapseFails = collapseFailedAttempts == prevSqls.size();
+		//if the curSql cannot collapse with any of the previous sql, just add cursql to the cumulativesql
+		if(allCollapseFails)
+			resultantSqlBuilder.append(curSql);
 		return resultantSqlBuilder.toString();
 	}
 	
+	public static final Pattern RENAME_PATTERN = Pattern.compile("^RENAME\\s+(\\S+)\\s+TO\\s+(\\S+)$", Pattern.CASE_INSENSITIVE);
+	public static final Pattern MODIFY_PATTERN = Pattern.compile(
+            "^MODIFY\\s+(\\S+)\\s+AS\\s+(\\S+)\\s+(.+)$",
+            Pattern.CASE_INSENSITIVE
+        );
+	
 	public String collapseSingletonSql(String prevSingleton, String curSql) {
 		String resultSql = null;
+		String keyword_prev = SH.beforeFirst(prevSingleton, ' ');
+		String keyword_cur = SH.beforeFirst(curSql, ' ');
+		boolean canCollapse = false;
+		//permutate over [RENAME, MODIFY, DROP, ADD, MOVE] 5*5 = 25 scenarios
+		if(SH.equals("RENAME", keyword_prev)) {
+			Matcher prevMatcher = RENAME_PATTERN.matcher(prevSingleton);
+			String prev_rename_from = prevMatcher.group(1);
+			String prev_rename_to = prevMatcher.group(2);
+			if(SH.equals("RENAME", keyword_cur)) {	
+				Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+				String cur_rename_from = curMatcher.group(1);
+				String cur_rename_to = curMatcher.group(2);
+				
+				if(SH.equals(prev_rename_to, cur_rename_from)) {
+					canCollapse = true;
+					resultSql = "RENAME " + prev_rename_from + " TO " + cur_rename_to;
+				}
+			}else if(SH.equals("MODIFY", keyword_cur)) {
+				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+				String cur_oldName  = curMatcher.group(1);
+	            String cur_newName  = curMatcher.group(2);
+	            String cur_type = curMatcher.group(3);
+	            
+	            if(SH.equals(prev_rename_to, cur_oldName)) {
+	            	canCollapse = true;
+	            	resultSql = "MODIFY " + prev_rename_from + " AS " + cur_type;
+	            }
+			} else if(SH.equals("DROP", keyword_cur)) {
+				String cur_col2Drop = SH.afterFirst(curSql, " ");
+				
+				 if(SH.equals(prev_rename_to, cur_col2Drop)) {
+					 canCollapse = true;
+					 resultSql = "DROP " + prev_rename_from;
+				 }				
+			} else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
+				//no op
+				canCollapse = false;
+			}
+			
+		} else {
+			
+		}
+				
+		if(!canCollapse)
+			resultSql = prevSingleton;
+		
+		
+		
 		return resultSql;
 	}
 	
