@@ -72,6 +72,7 @@ import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_Boolean;
 import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.HasherMap;
+import com.f1.utils.concurrent.IdentityHashSet;
 import com.f1.utils.formatter.BasicTextFormatter;
 import com.f1.utils.impl.CaseInsensitiveHasher;
 import com.f1.utils.string.ExpressionParserException;
@@ -134,7 +135,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	//use a different approach
 	//private Map<String, Set<String>> usedNames = new HashMap<String, Set<String>>();
 	private Set<String> origColNames = new HashSet<String>();
-	private Set<LinkedList<String>> editChains = new HashSet<LinkedList<String>>();
+	private Set<LinkedList<String>> editChains = new IdentityHashSet<LinkedList<String>>();
 	private ArrayList<String> curColumns = new ArrayList<String>();
 
 	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
@@ -430,6 +431,18 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			return;
 		existingColNames.remove(colName);
 		colNames2rows_Table.remove(colName);
+		
+		//delete the chain
+		LinkedList<String> toDeleteChain = null;
+		for(LinkedList<String> chain: editChains) {
+			if(chain.getLast().equals(colName)) {
+				toDeleteChain = chain;
+				break;
+			}
+		}
+		if(toDeleteChain == null)
+			throw new NullPointerException("Couldn't find the chain to delete");
+		editChains.remove(toDeleteChain);
 	}
 	
 	//need to update the "Add" message in the log table for empty row
@@ -1550,6 +1563,29 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		}
 
 	};
+	
+	private void previewSql_UnOptimized(StringBuilder sb) {
+		Iterable<Row> rows = userLogTable.getTable().getRows();
+		for(Row r: rows) {
+			String sql = (String) r.get("sql");
+			Byte type = (Byte)r.get("type");
+			switch(type) {
+				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
+				case AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN:
+				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
+				case AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN:
+				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
+					sb.append(sql).append(", ");
+					break;
+				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
+				case AmiUserEditMessage.ACTION_TYPE_WARNING:
+			}	
+		}
+		if (sb.length() > 0) {
+		    sb.setLength(sb.length() - 2);
+		    sb.append(';');
+		}
+	}
 
 	@Override
 	public String previewEdit() {
@@ -1558,35 +1594,39 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			String sql = "RENAME TABLE " + AmiUtils.escapeVarName(tableNameField.getDefaultValue()) + " TO " + AmiUtils.escapeVarName(tableNameField.getValue());
 			sb.append(sql).append(';').append(SH.NEWLINE);
 		}
-		sb.append("ALTER PUBLIC TABLE ").append(tableNameField.getDefaultValue());
+		sb.append("ALTER PUBLIC TABLE ").append(AmiUtils.escapeVarName(tableNameField.getDefaultValue())).append(' ');
+		previewSql_UnOptimized(sb);
+		
+		
 		Iterable<Row> rows = userLogTable.getTable().getRows();
+		System.out.println("checking editChains:" + editChains);
 		//this contains the original column names
-		Set<String> toDelete = new HashSet<String>();
-		for(Row r: CH.sort(rows, COMPARATOR_DELETE_COLUMN_FIRST)) {
-			String sql = (String) r.get("sql");
-			Byte type = (Byte)r.get("type");
-			String curColName = (String) r.get("targetColumn");
-			String origColRef =(String) r.get("ocr");
-			if(canIgnoreRow(r, toDelete))
-				continue;
-			switch(type) {
-				case AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN:
-					toDelete.add(origColRef);
-					if(origColNames.contains(origColRef))
-						sb.append(" DROP ").append(origColRef).append(',');
-					break;
-				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
-				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
-				case AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN:
-				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
-					sb.append(sql).append(", ");
-					break;
-				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
-				case AmiUserEditMessage.ACTION_TYPE_WARNING:
+//		Set<String> toDelete = new HashSet<String>();
+//		for(Row r: CH.sort(rows, COMPARATOR_DELETE_COLUMN_FIRST)) {
+//			String sql = (String) r.get("sql");
+//			Byte type = (Byte)r.get("type");
+//			String curColName = (String) r.get("targetColumn");
+//			String origColRef =(String) r.get("ocr");
+//			if(canIgnoreRow(r, toDelete))
+//				continue;
+//			switch(type) {
+//				case AmiUserEditMessage.ACTION_TYPE_DROP_COLUMN:
+//					toDelete.add(origColRef);
+//					if(origColNames.contains(origColRef))
+//						sb.append(" DROP ").append(origColRef).append(',');
+//					break;
+//				case AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN:
+//				case AmiUserEditMessage.ACTION_TYPE_RENAME_COLUMN:
+//				case AmiUserEditMessage.ACTION_TYPE_MOVE_COLUMN:
+//				case AmiUserEditMessage.ACTION_TYPE_MODIFY_COLUMN:
+//					sb.append(sql).append(", ");
+//					break;
+//				case AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE:
+//				case AmiUserEditMessage.ACTION_TYPE_WARNING:
 				
-			}
+			//}
 			
-		}
+		//}
 		return sb.toString();
 	}
 
