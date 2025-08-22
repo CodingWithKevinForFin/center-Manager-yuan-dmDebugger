@@ -245,7 +245,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.userLogTable.getTable().addColumn(true, "SQL", "sql", fm.getBasicFormatter()).setWidth(100);
 		this.userLogTable.getTable().addColumn(true, "Cumulative SQL", "cumulative_sql", fm.getBasicFormatter()).setWidth(100);
 		this.userLogTable.getTable().addColumn(true, "Description", "description", fm.getBasicFormatter()).setWidth(550);
-		//this.userLogTable.getTable().hideColumn("ocr");
+		this.userLogTable.getTable().hideColumn("ocr");
+		this.userLogTable.getTable().hideColumn("oldColumn");
 		this.userLogTable.getTable().addMenuListener(this);
 		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
@@ -1597,7 +1598,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	}
 	
-	
+	//prevSql = "rename a to a1"; curSql = "rename a1 to a2", then resultant sql should be "rename a to a2"
 	public String collapseSql(String prevSql, String curSql) {
 		String  resultantSql = null;
 		//break down prevSql
