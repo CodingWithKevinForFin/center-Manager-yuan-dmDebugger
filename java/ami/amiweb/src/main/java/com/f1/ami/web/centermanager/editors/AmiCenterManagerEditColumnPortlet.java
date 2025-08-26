@@ -483,10 +483,21 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		System.out.println(curColumns);
 		
 		Row logRow = colNames2rows_Log.get(oldColumnName);
+		String oldSql = (String) logRow.get("sql");
+		String nuwSql = "ADD " + nuwColumnName + " " + nuwType;
 		logRow.put("description", "A new column `" + nuwColumnName + " " + nuwType + '`' + " is added");
-		logRow.put("sql", "ADD " + nuwColumnName + " " + nuwType);
+		logRow.put("sql", nuwSql);
 		logRow.put("targetColumn", nuwColumnName);
 		logRow.put("ocr", originalColumnRef);
+		//also need to update the cumulative sql for the remaining of the rows
+		for(Row r: userLogTable.getTable().getRows()) {
+			Byte type = (Byte) r.get("type");
+			if(AmiUserEditMessage.ACTION_TYPE_WARNING == type)
+				continue;
+			String oldCumulativeSql = (String) r.get("cumulative_sql"); 
+			String nuwCumulativeSql = oldCumulativeSql.replace(oldSql, nuwSql);
+			r.put("cumulative_sql", nuwCumulativeSql);
+		}
 		colNames2rows_Log.remove(oldColumnName);
 		colNames2rows_Log.put(nuwColumnName, logRow);
 		//also update the table
@@ -593,7 +604,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//corresponds to "ALTER TABLE BLA RENAME COL TO NEW_NAME";
 	private void onRowUpdated_Rename(String old, String nuw) {
-		String sql = "RENAME " + old + " TO " + nuw;
+		String sql = "RENAME " + AmiUtils.escapeVarName(old) + " TO " + AmiUtils.escapeVarName(nuw);
 		onColumnRenamed(nuw, old);
 		String originalColumnRef = findHeadFromChain(nuw);
 		String cumulativeSql = isFirstColumnEditRow(AmiUserEditMessage.ACTION_TYPE_ADD_COLUMN) ? sql : collapseSql(getPrevCumulativeSql(), sql);
@@ -603,11 +614,11 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//corresponds to "ALTER TABLE BLA MOVE COL BEFORE/AFTER ...";
 	private void onRowUpdated_Move(String colName, int old, int nuw) {
-		String sql = "MOVE " + colName;
+		String sql = "MOVE " + AmiUtils.escapeVarName(colName);
 		if(nuw > old)
-			sql += " AFTER " + getColumnFromPosition(nuw);
+			sql += " AFTER " + AmiUtils.escapeVarName(getColumnFromPosition(nuw));
 		else
-			sql += " BEFORE " + getColumnFromPosition(nuw);
+			sql += " BEFORE " + AmiUtils.escapeVarName(getColumnFromPosition(nuw));
 		
 	    // Remove the column from old position
 	    String col = curColumns.remove(old);
@@ -1647,74 +1658,94 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//permutate over [RENAME, MODIFY, DROP, ADD, MOVE] 5*5 = 25 scenarios
 		if(SH.equals("RENAME", keyword_prev)) {
 			Matcher prevMatcher = RENAME_PATTERN.matcher(prevSingleton);
-			String prev_rename_from = prevMatcher.group(1);
-			String prev_rename_to = prevMatcher.group(2);
-			if(SH.equals("RENAME", keyword_cur)) {	
-				Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
-				String cur_rename_from = curMatcher.group(1);
-				String cur_rename_to = curMatcher.group(2);
-				
-				if(SH.equals(prev_rename_to, cur_rename_from)) {
-					canCollapse = true;
-					resultSql = "RENAME " + prev_rename_from + " TO " + cur_rename_to;
+			if(prevMatcher.matches()) {
+				String prev_rename_from = prevMatcher.group(1);
+				String prev_rename_to = prevMatcher.group(2);
+				if(SH.equals("RENAME", keyword_cur)) {	
+					Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+					if(curMatcher.matches()) {
+						String cur_rename_from = curMatcher.group(1);
+						String cur_rename_to = curMatcher.group(2);
+						
+						if(SH.equals(prev_rename_to, cur_rename_from)) {
+							canCollapse = true;
+							resultSql = "RENAME " + AmiUtils.escapeVarName(prev_rename_from) + " TO " + AmiUtils.escapeVarName(cur_rename_to);
+						}
+					}else
+						throw new IllegalStateException("Invalid RENAME CLAUSE, no match found");		
+				}else if(SH.equals("MODIFY", keyword_cur)) {
+					Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+					if(curMatcher.matches()) {
+						String cur_oldName  = curMatcher.group(1);
+			            String cur_newName  = curMatcher.group(2);
+			            String cur_type = curMatcher.group(3);
+			            
+			            if(SH.equals(prev_rename_to, cur_oldName)) {
+			            	canCollapse = true;
+			            	resultSql = "MODIFY " + AmiUtils.escapeVarName(prev_rename_from) + " AS " + AmiUtils.escapeVarName(cur_newName) + " " + cur_type;
+			            }
+					}else
+						throw new IllegalStateException("Invalid MODIFY CLAUSE, no match found");		
+					
+				} else if(SH.equals("DROP", keyword_cur)) {
+					String cur_col2Drop = SH.afterFirst(curSql, " ");
+					
+					 if(SH.equals(prev_rename_to, cur_col2Drop)) {
+						 canCollapse = true;
+						 resultSql = "DROP " + AmiUtils.escapeVarName(prev_rename_from);
+					 }				
+				} else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
+					//no op
+					canCollapse = false;
 				}
-			}else if(SH.equals("MODIFY", keyword_cur)) {
-				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
-				String cur_oldName  = curMatcher.group(1);
-	            String cur_newName  = curMatcher.group(2);
-	            String cur_type = curMatcher.group(3);
-	            
-	            if(SH.equals(prev_rename_to, cur_oldName)) {
-	            	canCollapse = true;
-	            	resultSql = "MODIFY " + prev_rename_from + " AS " + cur_type;
-	            }
-			} else if(SH.equals("DROP", keyword_cur)) {
-				String cur_col2Drop = SH.afterFirst(curSql, " ");
-				
-				 if(SH.equals(prev_rename_to, cur_col2Drop)) {
-					 canCollapse = true;
-					 resultSql = "DROP " + prev_rename_from;
-				 }				
-			} else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
-				//no op
-				canCollapse = false;
-			}
-			
+			}else
+				throw new IllegalStateException("Invalid RENAME CLAUSE, no match found");
 		} else if(SH.equals("MODIFY", keyword_prev)){
 			Matcher prevMatcher = MODIFY_PATTERN.matcher(prevSingleton);
-			String prev_oldName  = prevMatcher.group(1);
-            String prev_newName  = prevMatcher.group(2);
-            String prev_type = prevMatcher.group(3);
-			if(SH.equals("RENAME", keyword_cur)) {	   
-	            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
-	            String cur_oldName = curMatcher.group(1);
-	            String cur_newName = curMatcher.group(2);
-	            
-	            if(SH.equals(prev_newName, cur_oldName)) {
-	            	canCollapse = true;
-					resultSql = "MODIFY " + prev_oldName + " AS " + cur_newName + " " + prev_type;
-	            }
-			}else if(SH.equals("MODIFY", keyword_cur)) {
-				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
-				String cur_oldName  = curMatcher.group(1);
-	            String cur_newName  = curMatcher.group(2);
-	            String cur_type = curMatcher.group(3);
-	            
-	            if(SH.equals(prev_newName, cur_oldName)) {
-	            	canCollapse = true;
-					resultSql = "MODIFY " + prev_oldName + " AS " + cur_newName + " " + cur_type;
-	            }
-			}else if(SH.equals("DROP", keyword_cur)) {
-				String cur_col2Drop = SH.afterFirst(curSql, " ");
-				
-				 if(SH.equals(prev_newName, cur_col2Drop)) {
-					 canCollapse = true;
-					 resultSql = "DROP " + prev_oldName;
-				 }		
-			}else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
-				//no op
-				canCollapse = false;
-			}
+			if(prevMatcher.matches()) {
+				String prev_oldName  = prevMatcher.group(1);
+	            String prev_newName  = prevMatcher.group(2);
+	            String prev_type = prevMatcher.group(3);
+				if(SH.equals("RENAME", keyword_cur)) {	   
+		            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+		            if(curMatcher.matches()) {
+		            	String cur_oldName = curMatcher.group(1);
+			            String cur_newName = curMatcher.group(2);
+			            
+			            if(SH.equals(prev_newName, cur_oldName)) {
+			            	canCollapse = true;
+							resultSql = "MODIFY " + AmiUtils.escapeVarName(prev_oldName) + " AS " + AmiUtils.escapeVarName(cur_newName) + " " + prev_type;
+			            }
+		            }else
+		            	throw new IllegalStateException("Invalid RENAME CLAUSE, no match found");
+				}else if(SH.equals("MODIFY", keyword_cur)) {
+					Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+					if(curMatcher.matches()) {
+						String cur_oldName  = curMatcher.group(1);
+			            String cur_newName  = curMatcher.group(2);
+			            String cur_type = curMatcher.group(3);
+			            
+			            if(SH.equals(prev_newName, cur_oldName)) {
+			            	canCollapse = true;
+							resultSql = "MODIFY " + AmiUtils.escapeVarName(prev_oldName) + " AS " + AmiUtils.escapeVarName(cur_newName) + " " + cur_type;
+			            }
+					}else
+						throw new IllegalStateException("Invalid MODIFY CLAUSE, no match found");
+					
+				}else if(SH.equals("DROP", keyword_cur)) {
+					String cur_col2Drop = SH.afterFirst(curSql, " ");
+					
+					 if(SH.equals(prev_newName, cur_col2Drop)) {
+						 canCollapse = true;
+						 resultSql = "DROP " + AmiUtils.escapeVarName(prev_oldName);
+					 }		
+				}else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
+					//no op
+					canCollapse = false;
+				}
+			}else
+				throw new IllegalStateException("Invalid MODIFY CLAUSE, no match found");
+			
 		} else if(SH.equals("DROP", keyword_prev)) {
 			//no op
 			canCollapse = false;
@@ -1724,25 +1755,33 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				String prev_add_col_name = preMatcher.group(1);
 				if(SH.equals("RENAME", keyword_cur)) {	   
 		            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
-		            String cur_oldName = curMatcher.group(1);
-		            String cur_newName = curMatcher.group(2);
+		            if(curMatcher.matches()) {
+		            	String cur_oldName = curMatcher.group(1);
+			            String cur_newName = curMatcher.group(2);
+			            
+			            if(SH.equals(prev_add_col_name, cur_oldName)) {
+			            	String replaced = preMatcher.replaceFirst("ADD " + AmiUtils.escapeVarName(cur_newName) + " $2");
+			            	canCollapse = true;
+							resultSql = replaced;
+			            }
+		            }else
+		            	throw new IllegalStateException("Invalid ADD CLAUSE, no match found");
 		            
-		            if(SH.equals(prev_add_col_name, cur_oldName)) {
-		            	String replaced = preMatcher.replaceFirst("ADD " + cur_newName + " $2");
-		            	canCollapse = true;
-						resultSql = replaced;
-		            }
 				}else if(SH.equals("MODIFY", keyword_cur)) {
 					Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
-					String cur_oldName  = curMatcher.group(1);
-		            String cur_newName  = curMatcher.group(2);
-		            String cur_type = curMatcher.group(3);
-		            
-		            if(SH.equals(prev_add_col_name, cur_oldName)) {
-		            	String replaced = preMatcher.replaceFirst("$1" + cur_newName + "$3");
-		            	canCollapse = true;
-						resultSql = replaced;
-		            }
+					if(curMatcher.matches()) {
+						String cur_oldName  = curMatcher.group(1);
+			            String cur_newName  = curMatcher.group(2);
+			            String cur_type = curMatcher.group(3);
+			            
+			            if(SH.equals(prev_add_col_name, cur_oldName)) {
+			            	String replaced = preMatcher.replaceFirst("$1" + AmiUtils.escapeVarName(cur_newName) + "$3");
+			            	canCollapse = true;
+							resultSql = replaced;
+			            }
+					}else
+						throw new IllegalStateException("Invalid MODIFY CLAUSE, no match found");
+					
 				}else if(SH.equals("DROP", keyword_cur)) {
 					String cur_col2Drop = SH.afterFirst(curSql, " ");
 					
@@ -1835,6 +1874,24 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return sb.toString();
 			
 	}
+	
+	public boolean hasEditChanges() {
+		int logRowCnt = userLogTable.getTable().getRowsCount();
+		if(logRowCnt == 0) {
+			return false;
+		}
+		//check the last non-warning row's cumulative sql
+		String lastCumulativeSql = null;
+		for(int i = logRowCnt - 1; i >= 0; i--) {
+			Row r = userLogTable.getTable().getRows().get(i);
+			byte type = (Byte) r.get("type");
+			if(type == AmiUserEditMessage.ACTION_TYPE_WARNING)
+				continue;
+			String cumulativeSql = (String) r.get("cumulative_sql");
+			lastCumulativeSql = cumulativeSql;
+		}
+		return SH.is(lastCumulativeSql);
+	}
 
 	@Override
 	public boolean ensureCanProceedWithApply() {
@@ -1851,14 +1908,12 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		}
 		
 		//if no changes detected
-		if(userLogTable.getTable().getRowsCount() == 0) {
+		if(!hasEditChanges()) {
 			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
 			return false;
 		}
-			
-		return true;
-			
 		
+		return true;
 	}
 	
 	
