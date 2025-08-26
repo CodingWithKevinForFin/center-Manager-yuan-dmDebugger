@@ -408,7 +408,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		List<Row> existingRows = userLogTable.getTable().getRows();
 		String prevCumulativeSql = null;
 		//reverse loop over the row
-		for(int i = existingRows.size() - 1; i > 0; i--) {
+		for(int i = existingRows.size() - 1; i >= 0; i--) {
 			Row prevRow = existingRows.get(i);
 			String cumulativeSql = (String) prevRow.get("cumulative_sql");
 			if(cumulativeSql != null) {
@@ -1611,12 +1611,22 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			String resultSql = collapseSingletonSql(prevSingleton, curSql);
 			if(SH.equals(resultSql, prevSingleton))
 				collapseFailedAttempts++; 
-			resultantSqlBuilder.append(resultSql);
+			if(resultantSqlBuilder.length() == 0)
+				resultantSqlBuilder.append(resultSql);
+			else if(SH.is(resultSql))
+				resultantSqlBuilder.append(',').append(resultSql);
+			else if(SH.isnt(resultSql))
+				resultantSqlBuilder.append("");
 		}
 		boolean allCollapseFails = collapseFailedAttempts == prevSqls.size();
 		//if the curSql cannot collapse with any of the previous sql, just add cursql to the cumulativesql
-		if(allCollapseFails)
-			resultantSqlBuilder.append(curSql);
+		if(allCollapseFails) {
+			if(resultantSqlBuilder.length() == 0)
+				resultantSqlBuilder.append(curSql);
+			else
+				resultantSqlBuilder.append(',').append(curSql);
+		}
+			
 		return resultantSqlBuilder.toString();
 	}
 	
@@ -1626,7 +1636,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
             Pattern.CASE_INSENSITIVE
         );
 	
-	public static final Pattern ADD_PATTERN =Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+	public static final Pattern ADD_PATTERN = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);  //Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+	public static final Pattern MOVE_PATTERN = Pattern.compile("^MOVE\\s+(\\w+)\\s+(BEFORE|AFTER)\\s+(\\w+)$", Pattern.CASE_INSENSITIVE);
 	
 	public String collapseSingletonSql(String prevSingleton, String curSql) {
 		String resultSql = null;
@@ -1709,29 +1720,76 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			canCollapse = false;
 		} else if(SH.equals("ADD", keyword_prev)) {
 			Matcher preMatcher = ADD_PATTERN.matcher(prevSingleton);
-			String prev_add_col_name = preMatcher.group(1);
-			if(SH.equals("RENAME", keyword_cur)) {	   
-	            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
-	            String cur_oldName = curMatcher.group(1);
-	            String cur_newName = curMatcher.group(2);
-	            
-	            if(SH.equals(prev_add_col_name, cur_oldName)) {
-	            	String replaced = preMatcher.replaceFirst("ADD " + cur_newName + " $2");
-	            	canCollapse = true;
-					resultSql = replaced;
-	            }
-			}else if(SH.equals("MODIFY", keyword_cur)) {
-				Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
-				String cur_oldName  = curMatcher.group(1);
-	            String cur_newName  = curMatcher.group(2);
-	            String cur_type = curMatcher.group(3);
-	            
-	            if(SH.equals(prev_add_col_name, cur_oldName)) {
-	            	String replaced = preMatcher.replaceFirst("$1" + cur_newName + "$3");
-	            	canCollapse = true;
-					resultSql = replaced;
-	            }
-			}
+			if(preMatcher.matches()) {
+				String prev_add_col_name = preMatcher.group(1);
+				if(SH.equals("RENAME", keyword_cur)) {	   
+		            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
+		            String cur_oldName = curMatcher.group(1);
+		            String cur_newName = curMatcher.group(2);
+		            
+		            if(SH.equals(prev_add_col_name, cur_oldName)) {
+		            	String replaced = preMatcher.replaceFirst("ADD " + cur_newName + " $2");
+		            	canCollapse = true;
+						resultSql = replaced;
+		            }
+				}else if(SH.equals("MODIFY", keyword_cur)) {
+					Matcher curMatcher = MODIFY_PATTERN.matcher(curSql);
+					String cur_oldName  = curMatcher.group(1);
+		            String cur_newName  = curMatcher.group(2);
+		            String cur_type = curMatcher.group(3);
+		            
+		            if(SH.equals(prev_add_col_name, cur_oldName)) {
+		            	String replaced = preMatcher.replaceFirst("$1" + cur_newName + "$3");
+		            	canCollapse = true;
+						resultSql = replaced;
+		            }
+				}else if(SH.equals("DROP", keyword_cur)) {
+					String cur_col2Drop = SH.afterFirst(curSql, " ");
+					
+					 if(SH.equals(prev_add_col_name, cur_col2Drop)) {
+						 canCollapse = true;
+						 resultSql = "";
+					 }				
+					
+				}else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
+					//no op
+					canCollapse = false;
+				}
+			}else
+				throw new IllegalStateException("Invalid ADD CLAUSE, no match found");
+			
+		}else if(SH.equals("MOVE", keyword_prev)) {
+			Matcher preMatcher = MOVE_PATTERN.matcher(prevSingleton);
+			if(preMatcher.matches()){
+				String prev_move = preMatcher.group(1);
+				if(SH.equals("DROP", keyword_cur)) {
+					String cur_col2Drop = SH.afterFirst(curSql, " ");
+					
+					 if(SH.equals(prev_move, cur_col2Drop)) {
+						 canCollapse = true;
+						 resultSql = "";
+					 }				
+					
+				} else if(SH.equals("MOVE", keyword_cur)) {
+					Matcher postMatcher = MOVE_PATTERN.matcher(curSql);
+					if(postMatcher.matches()) {
+						String post_move = postMatcher.group(1);
+						if(SH.equals(prev_move, post_move)) {
+							canCollapse = true;
+							//TODO:also need to check if the position has changed at all
+							 resultSql = curSql;
+						}else
+							canCollapse = false;
+					}else
+						throw new IllegalStateException("Invalid MOVE CLAUSE, no match found");
+					
+				} else if(SH.equals("ADD", keyword_cur) ||  SH.equals("RENAME", keyword_cur) ||  SH.equals("MODIFY", keyword_cur)) {//TODO: optimize move
+					//no op
+					canCollapse = false;
+				}
+			}else
+				throw new IllegalStateException("Invalid MOVE CLAUSE, no match found");
+		
 		}
 				
 		if(!canCollapse)
@@ -1805,21 +1863,60 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	
 	public static void main(String[] args) {
-		String input = "ADD colA STRING NONULL AFTER colB";
-        String newName = "myNewCol";
+//		String input = "ADD colA STRING NONULL AFTER colB";
+//        String newName = "myNewCol";
+//
+//        Pattern pattern = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+//        Matcher matcher = pattern.matcher(input);
+//
+//        if (matcher.matches()) {
+//        	String replaced = matcher.replaceFirst("ADD " + newName + " $2");
+//            System.out.println("Original: " + input);
+//            System.out.println("Replaced: " + replaced);
+//        } else {
+//            System.out.println("No match!");
+//        }
+		
+		//String input = "ADD new_column String BITMAP ASCII";
+//		String input = "ADD new_column String";
+//
+//        Pattern pattern = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+//        Matcher matcher = pattern.matcher(input);
+//        String tt =  matcher.group(1);
+//        if (matcher.matches()) {
+//            String name = matcher.group(1);      // "new_column"
+//            String typeAndOptions = matcher.group(2); // "String BITMAP ASCII"
+//
+//            System.out.println("Column name: " + name);
+//            System.out.println("Type + Options: " + typeAndOptions);
+//        } else {
+//            System.out.println("No match!");
+//        }
 
-        Pattern pattern = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(input);
+		 String[] inputs = {
+		            "MOVE `colA A` BEFORE colB",
+		            "MOVE `user_id B` AFTER id"
+		        };
 
-        if (matcher.matches()) {
-        	String replaced = matcher.replaceFirst("ADD " + newName + " $2");
-            System.out.println("Original: " + input);
-            System.out.println("Replaced: " + replaced);
-        } else {
-            System.out.println("No match!");
-        }
+		        Pattern pattern = Pattern.compile("^MOVE\\s+(\\w+)\\s+(BEFORE|AFTER)\\s+(\\w+)$",
+		                                          Pattern.CASE_INSENSITIVE);
 
+		        for (String input : inputs) {
+		            Matcher matcher = pattern.matcher(input);
+		            if (matcher.matches()) {
+		                String colToMove   = matcher.group(1);
+		                String direction   = matcher.group(2);
+		                String anotherCol  = matcher.group(3);
 
+		                System.out.println("Input: " + input);
+		                System.out.println("  colToMove:  " + colToMove);
+		                System.out.println("  direction:  " + direction);
+		                System.out.println("  anotherCol: " + anotherCol);
+		                System.out.println();
+		            } else {
+		                System.out.println("No match for: " + input);
+		            }
+		        }
 		
 	}
 
