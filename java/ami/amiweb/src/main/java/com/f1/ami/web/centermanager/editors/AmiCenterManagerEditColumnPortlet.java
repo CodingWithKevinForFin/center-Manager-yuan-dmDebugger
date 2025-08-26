@@ -484,7 +484,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		
 		Row logRow = colNames2rows_Log.get(oldColumnName);
 		String oldSql = (String) logRow.get("sql");
-		String nuwSql = "ADD " + nuwColumnName + " " + nuwType;
+		String nuwSql = "ADD " + AmiUtils.escapeVarName(nuwColumnName) + " " + AmiUtils.escapeVarName(nuwType);
 		logRow.put("description", "A new column `" + nuwColumnName + " " + nuwType + '`' + " is added");
 		logRow.put("sql", nuwSql);
 		logRow.put("targetColumn", nuwColumnName);
