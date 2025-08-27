@@ -19,7 +19,7 @@ import com.f1.utils.structs.table.derived.MethodFactory;
 import com.f1.utils.structs.table.stack.CalcFrameStack;
 
 public interface SqlProcessorTableMutator {
-
+	
 	public Table processTableAdd(CalcFrameStack sf, String name, int namePosition, Table r, Map<String, Node> useOptions, int scope, boolean ifNotExists);
 	public Table processTableAdd(CalcFrameStack sf, String name, int namePosition, String[] types, String[] names, Map<String, Node>[] colOptions, int[] colDefPos,
 			Map<String, Node> useOptions, int scope, boolean ifNotExists);
@@ -34,6 +34,7 @@ public interface SqlProcessorTableMutator {
 	public Table processColumnRemove(CalcFrameStack sf, int tableNamePos, String tableName, String colname, int colNamePos, int scope);
 	public Table processColumnChangeType(CalcFrameStack sf, int tableNamePos, String tableName, int location, Class<?> type, int newTypePos, String newType, String newName,
 			Map<String, Node> options, int scope);
+	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String name, String varname, int moveToPosition, int scope);
 
 	public TableReturn processRowAdds(CalcFrameStack sf, Table table, int tableNamePos, ColumnPositionMapping posMapping, int startRow, int rows, Table values,
 			boolean returnGeneratedIds);

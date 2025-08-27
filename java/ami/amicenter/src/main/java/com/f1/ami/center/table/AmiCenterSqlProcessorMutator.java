@@ -2439,6 +2439,24 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 			throw new ExpressionParserException(toPos, "PROCEDURE already exists: " + to);
 		session.getObjectsManager().renameProcedure(from, to, sf);
 	}
+	
+	@Override
+	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String varname, int moveToPosition, int scope) {
+		AmiImdbSession session = AmiCenterUtils.getSession(sf);
+		Table t = getTable(sf, moveToPosition, tableName, scope);
+		if(t instanceof AmiHdbTableRep) {
+			throw new UnsupportedOperationException("HDB table not supported MOVE columns");
+		}
+		AmiTableImpl table = getAmiTable(t);
+		if(table == null) {
+			return this.inner.processColumnMove(sf, tableNamePos, tableName, varname, moveToPosition, scope);
+		}else {
+			session.assertCanAlter();
+			//AmiColumnImpl<?> colToMove = table.removeColumn(varname, sf);
+			return null;
+		}
+	}
+	
 	@Override
 	public Table processColumnAdd(CalcFrameStack sf, int tableNamePos, String tableName, int typePos, String type, String varname, int position, int scope,
 			Map<String, Node> options, Object[] vals) {

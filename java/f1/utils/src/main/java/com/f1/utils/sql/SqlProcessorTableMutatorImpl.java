@@ -78,6 +78,11 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 		sf.getTableset().putTable(to, r);
 		return r;
 	}
+	
+	@Override
+	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String name, String varname, int moveToPosition, int scope) {
+		throw new UnsupportedOperationException();
+	}
 
 	@Override
 	public Table processColumnAdd(CalcFrameStack sf, int tableNamePos, String tableName, int typePosition, String type, String varname, int colPos, int scope,
