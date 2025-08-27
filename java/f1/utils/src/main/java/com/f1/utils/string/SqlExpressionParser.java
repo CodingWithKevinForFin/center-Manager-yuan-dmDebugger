@@ -89,6 +89,7 @@ public class SqlExpressionParser extends JavaExpressionParser {
 	public static final int ID_LEFT_ONLY_JOIN = 52;
 	public static final int ID_LIMIT = 28;
 	public static final int ID_MODIFY = 32;
+	public static final int ID_MOVE = 24;
 	public static final int ID_NEAREST = 57;
 	public static final int ID_OR = 7;
 	public static final int ID_ON = 40;
@@ -313,6 +314,8 @@ public class SqlExpressionParser extends JavaExpressionParser {
 				return "COLUMN";
 			case ID_BYNAME:
 				return "BYNAME";
+			case ID_MOVE:
+				return "MOVE";
 			default:
 				return "UNKNOWN: " + op;
 		}
@@ -590,6 +593,7 @@ public class SqlExpressionParser extends JavaExpressionParser {
 						addStopKeywordId(ID_RENAME);
 						addStopKeywordId(ID_MODIFY);
 						addStopKeywordId(ID_DROP);
+						addStopKeywordId(ID_MOVE);
 						return (parseAlter(position, c));
 					case ID_CALL:
 						return (parseCall(position, c));
@@ -929,6 +933,11 @@ public class SqlExpressionParser extends JavaExpressionParser {
 					return ID_LIMIT;
 				if (SH.equalsIgnoreCase("LOCAL", buf))
 					return ID_LOCAL;
+				break;
+			case 'M' | 4 << 8:
+			case 'm' | 4 << 8:
+				if (SH.equalsIgnoreCase("MOVE", buf))
+					return ID_MOVE;
 				break;
 			case 'M' | 6 << 8:
 			case 'm' | 6 << 8:
@@ -1906,6 +1915,13 @@ public class SqlExpressionParser extends JavaExpressionParser {
 					break;
 				case ID_DROP:
 					col = parseVariableNode(c, buf);
+					break;
+				case ID_MOVE:
+					col = parseVariableNode(c, buf);
+					sws(c);
+					expectKeywordId(c, ID_BEFORE);
+					sws(c);
+					before = parseVariableNode(c, buf);
 					break;
 				case ID_USE:
 					usePosition = position;

@@ -486,6 +486,12 @@ public class SqlProcessor_Admin {
 					if (alter.getExpression() != null)
 						addCalcs[alterPos] = this.owner.getParser().processNode(alter.getExpression(), context2);
 					break;
+				case SqlExpressionParser.ID_MOVE:
+					if (alter.getColName() != null && !postColumnNames.contains(alter.getColName().getVarname()))
+						throw new ExpressionParserException(alter.getColName().getPosition(), "Column not found: " + alter.getColName().getVarname());
+					if (alter.getBefore() != null && !postColumnNames.contains(alter.getBefore().getVarname()))
+						throw new ExpressionParserException(alter.getBefore().getPosition(), "Column not found: " + alter.getBefore().getVarname());
+					break;
 				default:
 					throw new ExpressionParserException(alter.getPosition(), "Invalid ALTER column type: " + SqlExpressionParser.toOperationString(alter.getType()));
 			}
@@ -532,6 +538,12 @@ public class SqlProcessor_Admin {
 					}
 					mutator.processColumnAdd(sf, tableNamePos, name, typePos, type, alter.getNewName().getVarname(), position, scope,
 							alter.getUseOptions() == null ? null : alter.getUseOptions().getOptionsMap(), addVals[alterPos]);
+					break;
+				case SqlExpressionParser.ID_MOVE:
+					if(alter.getBefore() == null)
+						throw new NullPointerException("Expecting BEFORE");
+					int moveToPosition =  r.getColumn(alter.getBefore().getVarname()).getLocation();
+					mutator.processColumnMove(sf, tableNamePos, name, alter.getColName().getVarname(), moveToPosition, scope);
 					break;
 				default:
 					throw new ExpressionParserException(alter.getPosition(), "Invalid ALTER column type: " + SqlExpressionParser.toOperationString(alter.getType()));

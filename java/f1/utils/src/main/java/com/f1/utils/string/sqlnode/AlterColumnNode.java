@@ -49,9 +49,12 @@ final public class AlterColumnNode implements Node {
 				if (newType != null)
 					return sink.append(' ').append(newType);
 				break;
+			case SqlExpressionParser.ID_MOVE:
+				sink.append(colName.getVarname());
+				break;
 		}
 		if (before != null)
-			before.toString(sink.append(" BEFORE"));
+			before.toString(sink.append(" BEFORE "));
 		return sink;
 	}
 
