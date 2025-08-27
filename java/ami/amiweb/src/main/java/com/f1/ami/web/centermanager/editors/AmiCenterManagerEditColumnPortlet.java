@@ -1614,6 +1614,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		curColumns.clear();
 
 		importFromText(sql, new StringBuilder());
+		applyButton.setEnabled(true);
 		
 		
 
