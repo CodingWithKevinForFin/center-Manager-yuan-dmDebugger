@@ -1588,11 +1588,16 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			String sql = "RENAME TABLE " + AmiUtils.escapeVarName(tableNameField.getDefaultValue()) + " TO " + AmiUtils.escapeVarName(tableNameField.getValue());
 			sb.append(sql).append(';').append(SH.NEWLINE);
 		}
-		sb.append("ALTER PUBLIC TABLE ").append(AmiUtils.escapeVarName(tableNameField.getDefaultValue())).append(' ');
-		previewSql_UnOptimized(sb);
+		if(hasEditChanges()) {
+			sb.append("ALTER PUBLIC TABLE ").append(AmiUtils.escapeVarName(tableNameField.getValue())).append(' ');
+			sb.append(getLastCumulativeSql());
+		}
+		
 		
 		return sb.toString();
 	}
+	
+
 
 	@Override
 	protected void revertEdit() {
@@ -1761,7 +1766,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		            	String cur_oldName = curMatcher.group(1);
 			            String cur_newName = curMatcher.group(2);
 			            
-			            if(SH.equals(prev_add_col_name, cur_oldName) && !curColumns.contains(cur_newName)) {
+			            if(SH.equals(prev_add_col_name, cur_oldName) && !origColNames.contains(cur_newName)) {
 			            	String replaced = preMatcher.replaceFirst("ADD " + AmiUtils.escapeVarName(cur_newName) + " $2");
 			            	canCollapse = true;
 							resultSql = replaced;
@@ -1776,10 +1781,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			            String cur_newName  = curMatcher.group(2);
 			            String cur_type = curMatcher.group(3);
 			            
-			            if(SH.equals(prev_add_col_name, cur_oldName)) {
-			            	String replaced = preMatcher.replaceFirst("$1" + AmiUtils.escapeVarName(cur_newName) + "$3");
+			            if(SH.equals(prev_add_col_name, cur_oldName) && !origColNames.contains(cur_newName)) {
 			            	canCollapse = true;
-							resultSql = replaced;
+			            	resultSql = "ADD " + AmiUtils.escapeVarName(cur_newName) + " " + cur_type;
+							
 			            }
 					}else
 						throw new IllegalStateException("Invalid MODIFY CLAUSE, no match found");
@@ -1877,11 +1882,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			
 	}
 	
-	public boolean hasEditChanges() {
+	public String getLastCumulativeSql() {
 		int logRowCnt = userLogTable.getTable().getRowsCount();
-		if(logRowCnt == 0) {
-			return false;
-		}
 		//check the last non-warning row's cumulative sql
 		String lastCumulativeSql = null;
 		for(int i = logRowCnt - 1; i >= 0; i--) {
@@ -1891,8 +1893,17 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				continue;
 			String cumulativeSql = (String) r.get("cumulative_sql");
 			lastCumulativeSql = cumulativeSql;
+			break;
 		}
-		return SH.is(lastCumulativeSql);
+		return lastCumulativeSql;
+	}
+	
+	public boolean hasEditChanges() {
+		int logRowCnt = userLogTable.getTable().getRowsCount();
+		if(logRowCnt == 0) {
+			return false;
+		}
+		return SH.is(getLastCumulativeSql());
 	}
 
 	@Override
