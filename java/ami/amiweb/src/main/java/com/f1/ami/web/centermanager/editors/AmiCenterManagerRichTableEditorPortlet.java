@@ -60,12 +60,12 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 
 			Map<String, AmiCenterGraphNode_Index> indexBinding = this.service.getCenterGraphManager().getTable(tableName).getTargetIndexes();
 
-			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), createTableScript, correlationNode);
+			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), this, createTableScript, correlationNode);
 			tst = new AmiCenterManagerTriggerScirptTreePortlet(manager.generateConfig(), triggerBinding);
 			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), indexBinding, this.tableEditorTabsPortlet);
 
 		} else {
-			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), true);
+			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), this, true);
 			tst = new AmiCenterManagerTriggerScirptTreePortlet(manager.generateConfig(), new HashMap<String, AmiCenterGraphNode_Trigger>());
 			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), new HashMap<String, AmiCenterGraphNode_Index>(), this.tableEditorTabsPortlet);
 		}

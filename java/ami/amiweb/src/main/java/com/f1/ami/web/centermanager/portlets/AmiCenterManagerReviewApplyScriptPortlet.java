@@ -1,6 +1,8 @@
 package com.f1.ami.web.centermanager.portlets;
 
 import com.f1.ami.web.AmiWebUtils;
+import com.f1.ami.web.centermanager.editors.AmiCenterManagerAbstractEditCenterObjectPortlet;
+import com.f1.ami.web.centermanager.editors.AmiCenterManagerEditColumnPortlet;
 import com.f1.suite.web.portal.PortletConfig;
 import com.f1.suite.web.portal.impl.DividerPortlet;
 import com.f1.suite.web.portal.impl.FastTreePortlet;
@@ -17,9 +19,11 @@ public class AmiCenterManagerReviewApplyScriptPortlet extends GridPortlet {
 	final private DividerPortlet div;
 	final private AmiCenterManagerReviewScriptPortlet reviewPortlet;
 	final private AmiCenterManagerApplyScriptPortlet applyPortlet;
+	final private AmiCenterManagerAbstractEditCenterObjectPortlet editedObject;
 
-	public AmiCenterManagerReviewApplyScriptPortlet(PortletConfig config, String sql) {
+	public AmiCenterManagerReviewApplyScriptPortlet(PortletConfig config, AmiCenterManagerAbstractEditCenterObjectPortlet editedObject, String sql) {
 		super(config);
+		this.editedObject = editedObject;
 		stepTree = new FastTreePortlet(generateConfig());
 		stepTree.setFormStyle(AmiWebUtils.getService(getManager()).getUserFormStyleManager());
 		stepTree.getTree().setRootLevelVisible(false);
@@ -30,7 +34,7 @@ public class AmiCenterManagerReviewApplyScriptPortlet extends GridPortlet {
 		reviewSqlNode.setSelected(true);
 		reviewPortlet = new AmiCenterManagerReviewScriptPortlet(generateConfig(), this);
 		reviewPortlet.setSql(sql);
-		applyPortlet = new AmiCenterManagerApplyScriptPortlet(generateConfig(), this);
+		applyPortlet = new AmiCenterManagerApplyScriptPortlet(generateConfig(), this, editedObject);
 
 		panelGrid = new GridPortlet(generateConfig());
 		reviewOrApplyPanel = panelGrid.addChild(reviewPortlet, 0, 0, 1, 1);

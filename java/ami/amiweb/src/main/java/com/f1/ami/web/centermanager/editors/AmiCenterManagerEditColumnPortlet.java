@@ -107,6 +107,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	
 	final private AmiWebService service;
+	final private AmiCenterManagerRichTableEditorPortlet richTableEditor;
 	final private FormPortlet tableInfoPortlet;
 	final private FormPortletTextField tableNameField;
 	final private FormPortletSelectField<String> tablePersistEngineField;
@@ -134,9 +135,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	private Set<LinkedList<String>> editChains = new IdentityHashSet<LinkedList<String>>();
 	private ArrayList<String> curColumns = new ArrayList<String>();
 
-	public AmiCenterManagerEditColumnPortlet(PortletConfig config, boolean isAdd) {
+	public AmiCenterManagerEditColumnPortlet(PortletConfig config, AmiCenterManagerRichTableEditorPortlet parent, boolean isAdd) {
 		super(config, isAdd);
 		this.service = AmiWebUtils.getService(getManager());
+		richTableEditor = parent;
 		PortletManager manager = service.getPortletManager();
 		tableInfoPortlet = new FormPortlet(manager.generateConfig());
 		//ROW1
@@ -662,8 +664,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return head;
 	}
 
-	public AmiCenterManagerEditColumnPortlet(PortletConfig config, String tableSql, AmiCenterGraphNode_Table correlationNode) {
-		this(config, false);
+	public AmiCenterManagerEditColumnPortlet(PortletConfig config, AmiCenterManagerRichTableEditorPortlet parent, String tableSql, AmiCenterGraphNode_Table correlationNode) {
+		this(config, parent, false);
 		this.correlationNode = correlationNode;
 		this.sql = tableSql;
 		this.importFromText(tableSql, new StringBuilder());
@@ -1927,6 +1929,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		}
 		
 		return true;
+	}
+	
+	public AmiCenterManagerRichTableEditorPortlet getParentEditor() {
+		return this.richTableEditor;
 	}
 	
 	

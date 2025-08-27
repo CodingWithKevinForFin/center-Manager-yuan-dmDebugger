@@ -3,6 +3,8 @@ package com.f1.ami.web.centermanager.portlets;
 import java.util.Map;
 
 import com.f1.ami.portlets.AmiWebHeaderPortlet;
+import com.f1.ami.web.centermanager.editors.AmiCenterManagerAbstractEditCenterObjectPortlet;
+import com.f1.ami.web.centermanager.editors.AmiCenterManagerEditColumnPortlet;
 import com.f1.suite.web.portal.PortletConfig;
 import com.f1.suite.web.portal.impl.GridPortlet;
 import com.f1.suite.web.portal.impl.HtmlPortlet;
@@ -21,9 +23,11 @@ public class AmiCenterManagerApplyScriptPortlet extends GridPortlet implements F
 	final private FormPortlet buttonsFp;
 	final private FormPortletButton backButton;
 	final private FormPortletButton finishButton;
+	final private AmiCenterManagerAbstractEditCenterObjectPortlet editedObject;
 
-	public AmiCenterManagerApplyScriptPortlet(PortletConfig config, AmiCenterManagerReviewApplyScriptPortlet parent) {
+	public AmiCenterManagerApplyScriptPortlet(PortletConfig config, AmiCenterManagerReviewApplyScriptPortlet parent, AmiCenterManagerAbstractEditCenterObjectPortlet editedObject) {
 		super(config);
+		this.editedObject = editedObject;
 		owner = parent;
 		header = new AmiWebHeaderPortlet(generateConfig());
 		header.setInformationHeaderHeight(70);
@@ -56,6 +60,11 @@ public class AmiCenterManagerApplyScriptPortlet extends GridPortlet implements F
 	public void onButtonPressed(FormPortlet portlet, FormPortletButton button) {
 		if (button == this.finishButton) {
 			owner.close();
+			editedObject.close();
+			if(editedObject instanceof AmiCenterManagerEditColumnPortlet) {
+				AmiCenterManagerEditColumnPortlet columnEditor = (AmiCenterManagerEditColumnPortlet) editedObject;
+				columnEditor.getParentEditor().close();
+			}
 			return;
 		} else if (button == this.backButton) {
 			owner.backToReviewStage();
