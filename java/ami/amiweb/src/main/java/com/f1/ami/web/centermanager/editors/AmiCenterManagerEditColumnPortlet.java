@@ -465,6 +465,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	
 	//need to update the "Add" message in the log table for empty row
 	private void onEmptyRowUpdated(String nuwColumnName, String oldColumnName, String nuwType, String oldType) {
+		if(!this.isAdd)
+			throw new UnsupportedOperationException("onEmptyRowUpdated() not supported in edit mode");
 		String originalColumnRef = null;
 		//only one node in the chain for newly added 
 		for(LinkedList<String> chain : editChains) {
@@ -484,7 +486,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		
 		Row logRow = colNames2rows_Log.get(oldColumnName);
 		String oldSql = (String) logRow.get("sql");
-		String nuwSql = "ADD " + AmiUtils.escapeVarName(nuwColumnName) + " " + AmiUtils.escapeVarName(nuwType);
+		String nuwSql = "ADD " + AmiUtils.escapeVarName(nuwColumnName) + " " + nuwType;
 		logRow.put("description", "A new column `" + nuwColumnName + " " + nuwType + '`' + " is added");
 		logRow.put("sql", nuwSql);
 		logRow.put("targetColumn", nuwColumnName);
@@ -528,7 +530,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String oldType = oldDataType + " " + oldOption;
 		//first check if the update happens on original rows or newly added rows
 		Row logRowAdd = colNames2rows_Log.get(oldColName);
-		if(logRowAdd != null) { //&& !OH.eq(nuwColName, oldColName)) {
+		if(logRowAdd != null && this.isAdd) { //for add mode only
 			onEmptyRowUpdated(nuwColName, oldColName, nuwType, oldType);
 		} else {
 			System.out.println("the update is happening on orig rows");
@@ -1759,7 +1761,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		            	String cur_oldName = curMatcher.group(1);
 			            String cur_newName = curMatcher.group(2);
 			            
-			            if(SH.equals(prev_add_col_name, cur_oldName)) {
+			            if(SH.equals(prev_add_col_name, cur_oldName) && !curColumns.contains(cur_newName)) {
 			            	String replaced = preMatcher.replaceFirst("ADD " + AmiUtils.escapeVarName(cur_newName) + " $2");
 			            	canCollapse = true;
 							resultSql = replaced;
