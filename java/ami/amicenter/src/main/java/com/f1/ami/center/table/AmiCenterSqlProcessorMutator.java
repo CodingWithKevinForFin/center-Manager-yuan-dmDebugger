@@ -2441,23 +2441,6 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 	}
 	
 	@Override
-	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String varname, int moveToPosition, int scope) {
-		AmiImdbSession session = AmiCenterUtils.getSession(sf);
-		Table t = getTable(sf, moveToPosition, tableName, scope);
-		if(t instanceof AmiHdbTableRep) {
-			throw new UnsupportedOperationException("HDB table not supported MOVE columns");
-		}
-		AmiTableImpl table = getAmiTable(t);
-		if(table == null) {
-			return this.inner.processColumnMove(sf, tableNamePos, tableName, varname, moveToPosition, scope);
-		}else {
-			session.assertCanAlter();
-			//AmiColumnImpl<?> colToMove = table.removeColumn(varname, sf);
-			return null;
-		}
-	}
-	
-	@Override
 	public Table processColumnAdd(CalcFrameStack sf, int tableNamePos, String tableName, int typePos, String type, String varname, int position, int scope,
 			Map<String, Node> options, Object[] vals) {
 		AmiImdbSession session = AmiCenterUtils.getSession(sf);
@@ -2525,6 +2508,27 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 			return r.getTable();
 		}
 		return this.inner.processColumnRemove(sf, tableNamePos, tableName, colname, colNamePos, scope);
+	}
+	
+	@Override
+	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String colname, int colNamePos, String beforeColname, int beforeColNamePos, int scope) {
+		AmiImdbSession session = AmiCenterUtils.getSession(sf);
+		Table t = getTable(sf, tableNamePos, tableName, scope);
+		if(t instanceof AmiHdbTableRep) {
+			throw new UnsupportedOperationException("HDB table not supported MOVE columns");
+		}
+		AmiTableImpl table = getAmiTable(t);
+		if(table == null) {
+			return this.inner.processColumnMove(sf, tableNamePos, tableName, colname, colNamePos, beforeColname, beforeColNamePos, scope);
+		}else {
+			session.assertCanAlter();
+			table.moveColumn(colname, beforeColname, sf);
+//			AmiColumnImpl<?> colToMove = table.removeColumn2(varname, sf);
+//			colToMove.getColumn().setLocation(moveToPosition);
+//			table.addColumn(moveToPosition, colToMove, sf);
+			session.getImdb().onSchemaChanged(sf);
+			return t;
+		}
 	}
 
 	@Override

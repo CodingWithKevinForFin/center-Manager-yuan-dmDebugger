@@ -1484,6 +1484,31 @@ public class AmiTableImpl implements AmiImdbFlushable, AmiTable, ColumnarRowFact
 		if (this.persister != null && isStarted)
 			this.persister.saveTableToPersist(sf);
 	}
+	
+	public void moveColumn(String cname, String beforeName, CalcFrameStack sf) {
+		AmiColumnImpl<?> colToMove = getColumn(cname);
+		AmiColumnImpl<?> beforeCol = getColumn(beforeName);
+		int moveFrom = colToMove.getLocation();
+		int beforeColPos = beforeCol.getLocation();
+		int moveTo = moveFrom < beforeColPos ? beforeColPos - 1 : beforeColPos;
+		//TODO: can we move columns with indexes?
+		
+		
+		AmiColumnImpl[] t = AH.remove(columnsByPos, AH.indexOf(colToMove, columnsByPos));
+		ColumnarColumn toMove = this.table.removeColumn2(colToMove.getLocation());
+		rebuildColumns(t);
+		
+		AmiColumnImpl[] t2 = AH.insert(columnsByPos, moveTo, colToMove);
+		table.addColumn(moveTo, toMove);
+		rebuildColumns(t2);
+		
+	
+		flagForRebroadcastAll();
+		if (this.persister != null && isStarted)
+			this.persister.saveTableToPersist(sf);
+	}
+
+	
 	public AmiColumnImpl addColumn(int position, final byte type, final String cname, Map<String, String> options, CalcFrameStack sf) {
 		if (position < 64) {
 			for (AmiIndexImpl i : this.indexes) {

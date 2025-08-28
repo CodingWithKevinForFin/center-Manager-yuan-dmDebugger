@@ -542,8 +542,9 @@ public class SqlProcessor_Admin {
 				case SqlExpressionParser.ID_MOVE:
 					if(alter.getBefore() == null)
 						throw new NullPointerException("Expecting BEFORE");
-					int moveToPosition =  r.getColumn(alter.getBefore().getVarname()).getLocation();
-					mutator.processColumnMove(sf, tableNamePos, name, alter.getColName().getVarname(), moveToPosition, scope);
+					int origPosition =  r.getColumn(alter.getColName().getVarname()).getLocation();
+					int beforeColPosition =  r.getColumn(alter.getBefore().getVarname()).getLocation(); 
+					mutator.processColumnMove(sf, tableNamePos, name, alter.getColName().getVarname(), alter.getColName().getPosition(), alter.getBefore().getVarname(), alter.getBefore().getPosition(), scope);
 					break;
 				default:
 					throw new ExpressionParserException(alter.getPosition(), "Invalid ALTER column type: " + SqlExpressionParser.toOperationString(alter.getType()));

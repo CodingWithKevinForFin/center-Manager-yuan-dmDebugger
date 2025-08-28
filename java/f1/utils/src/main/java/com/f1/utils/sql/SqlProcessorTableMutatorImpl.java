@@ -80,7 +80,7 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 	}
 	
 	@Override
-	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String name, String varname, int moveToPosition, int scope) {
+	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String colname, int colNamePos, String beforeColname, int beforeColNamePos, int scope) {
 		throw new UnsupportedOperationException();
 	}
 

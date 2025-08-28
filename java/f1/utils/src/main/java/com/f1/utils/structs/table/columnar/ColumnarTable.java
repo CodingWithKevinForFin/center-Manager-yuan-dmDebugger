@@ -330,6 +330,21 @@ final public class ColumnarTable implements ToStringable, TableListenable, Colum
 			for (int i = 0; i < tableListenersCount; i++)
 				tableListeners.get(i).onColumnRemoved(col);
 	}
+	
+	public <T extends ColumnarColumn> T  removeColumn2(int location) {
+		Column col = this.columns[location];
+		this.columns = AH.remove(this.columns, location);
+		this.columnsSize--;
+		this.columnsList = null;
+		columnsMap.remove(col.getId());
+		for (int i = location; i < columnsSize; i++)
+			((ColumnarColumn) columns[i]).setLocation(i);
+		if (tableListenersCount > 0)
+			for (int i = 0; i < tableListenersCount; i++)
+				tableListeners.get(i).onColumnRemoved(col);
+		return (T) col;
+	}
+	
 
 	@Override
 	final public void renameColumn(String oldId, String newId) {
