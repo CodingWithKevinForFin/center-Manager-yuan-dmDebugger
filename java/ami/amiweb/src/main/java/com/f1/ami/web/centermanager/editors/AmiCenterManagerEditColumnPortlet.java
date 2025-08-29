@@ -1597,7 +1597,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			String sql = "RENAME TABLE " + AmiUtils.escapeVarName(tableNameField.getDefaultValue()) + " TO " + AmiUtils.escapeVarName(tableNameField.getValue());
 			sb.append(sql).append(';').append(SH.NEWLINE);
 		}
-		if(hasEditChanges()) {
+		if(hasColumnEditChanges()) {
 			sb.append("ALTER PUBLIC TABLE ").append(AmiUtils.escapeVarName(tableNameField.getValue())).append(' ');
 			sb.append(getLastCumulativeSql());
 		}
@@ -1899,7 +1899,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		for(int i = logRowCnt - 1; i >= 0; i--) {
 			Row r = userLogTable.getTable().getRows().get(i);
 			byte type = (Byte) r.get("type");
-			if(type == AmiUserEditMessage.ACTION_TYPE_WARNING)
+			if(type == AmiUserEditMessage.ACTION_TYPE_WARNING || type == AmiUserEditMessage.ACTION_TYPE_RENAME_TABLE)
 				continue;
 			String cumulativeSql = (String) r.get("cumulative_sql");
 			lastCumulativeSql = cumulativeSql;
@@ -1908,12 +1908,16 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return lastCumulativeSql;
 	}
 	
-	public boolean hasEditChanges() {
+	public boolean hasColumnEditChanges() {
 		int logRowCnt = userLogTable.getTable().getRowsCount();
 		if(logRowCnt == 0) {
 			return false;
 		}
 		return SH.is(getLastCumulativeSql());
+	}
+	
+	public boolean hasEditChanges() {
+		return hasColumnEditChanges() || renameTableLogRow != null;
 	}
 
 	@Override
