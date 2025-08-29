@@ -619,8 +619,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	//corresponds to "ALTER TABLE BLA MOVE COL BEFORE/AFTER ...";
 	private void onRowUpdated_Move(String colName, int old, int nuw) {
 		String sql = "MOVE " + AmiUtils.escapeVarName(colName);
-		if(nuw > old)
-			sql += " AFTER " + AmiUtils.escapeVarName(getColumnFromPosition(nuw));
+		if(nuw == curColumns.size() - 1)
+			sql += " LAST";
+		else if(nuw > old)
+			sql += " BEFORE " + AmiUtils.escapeVarName(getColumnFromPosition(nuw + 1));
 		else
 			sql += " BEFORE " + AmiUtils.escapeVarName(getColumnFromPosition(nuw));
 		
@@ -1658,8 +1660,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
         );
 	
 	public static final Pattern ADD_PATTERN = Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);  //Pattern.compile("^ADD\\s+(\\w+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
-	public static final Pattern MOVE_PATTERN = Pattern.compile("^MOVE\\s+(\\w+)\\s+(BEFORE|AFTER)\\s+(\\w+)$", Pattern.CASE_INSENSITIVE);
-	
+	//public static final Pattern MOVE_PATTERN = Pattern.compile("^MOVE\\s+(\\w+)\\s+(BEFORE|AFTER)\\s+(\\w+)$", Pattern.CASE_INSENSITIVE);
+	public static final Pattern MOVE_PATTERN = Pattern.compile("^MOVE\\s+(\\w+)\\s+(?:((BEFORE|AFTER)\\s+(\\w+))|LAST)$", Pattern.CASE_INSENSITIVE);
 	public String collapseSingletonSql(String prevSingleton, String curSql) {
 		String resultSql = null;
 		String keyword_prev = SH.beforeFirst(prevSingleton, ' ');
