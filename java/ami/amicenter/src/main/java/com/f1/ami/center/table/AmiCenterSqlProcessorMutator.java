@@ -2522,7 +2522,12 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 			return this.inner.processColumnMove(sf, tableNamePos, tableName, colname, colNamePos, beforeColname, beforeColNamePos, scope);
 		}else {
 			session.assertCanAlter();
-			table.moveColumn(colname, beforeColname, sf);
+			try {
+				table.moveColumn(colname, beforeColname, sf);
+			} catch (Exception e) {
+				throw new ExpressionParserException(tableNamePos, "Could not move column " + t.getTitle() + ": " + e.getMessage(), e);
+			}
+			
 //			AmiColumnImpl<?> colToMove = table.removeColumn2(varname, sf);
 //			colToMove.getColumn().setLocation(moveToPosition);
 //			table.addColumn(moveToPosition, colToMove, sf);

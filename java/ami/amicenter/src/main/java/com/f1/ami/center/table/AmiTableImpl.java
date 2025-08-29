@@ -1492,7 +1492,11 @@ public class AmiTableImpl implements AmiImdbFlushable, AmiTable, ColumnarRowFact
 		int beforeColPos = beforeName == null ? -1 : beforeCol.getLocation();
 		int moveTo = beforeName == null ? getColumnsCount() - 1 : (moveFrom < beforeColPos ? beforeColPos - 1 : beforeColPos);
 		//TODO: can we move columns with indexes?
-		
+		if (this.indexes != null)
+			for (AmiIndexImpl idx : this.indexes)
+				for (int i = 0; i < idx.getColumnsCount(); i++)
+					if (idx.getColumn(i) == colToMove)
+						throw new RuntimeException("Index '" + idx.getName() + "' depends on column: " + cname);
 		
 		AmiColumnImpl[] t = AH.remove(columnsByPos, AH.indexOf(colToMove, columnsByPos));
 		ColumnarColumn toMove = this.table.removeColumn2(colToMove.getLocation());
