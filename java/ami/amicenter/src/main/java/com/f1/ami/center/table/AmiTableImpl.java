@@ -1487,10 +1487,10 @@ public class AmiTableImpl implements AmiImdbFlushable, AmiTable, ColumnarRowFact
 	
 	public void moveColumn(String cname, String beforeName, CalcFrameStack sf) {
 		AmiColumnImpl<?> colToMove = getColumn(cname);
-		AmiColumnImpl<?> beforeCol = getColumn(beforeName);
+		AmiColumnImpl<?> beforeCol = beforeName == null ? null : getColumn(beforeName);
 		int moveFrom = colToMove.getLocation();
-		int beforeColPos = beforeCol.getLocation();
-		int moveTo = moveFrom < beforeColPos ? beforeColPos - 1 : beforeColPos;
+		int beforeColPos = beforeName == null ? -1 : beforeCol.getLocation();
+		int moveTo = beforeName == null ? getColumnsCount() - 1 : (moveFrom < beforeColPos ? beforeColPos - 1 : beforeColPos);
 		//TODO: can we move columns with indexes?
 		
 		

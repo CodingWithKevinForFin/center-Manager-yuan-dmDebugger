@@ -83,7 +83,7 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String colname, int colNamePos, String beforeColname, int beforeColNamePos, int scope) {
 		Table r = getTable(sf, tableNamePos, tableName, scope);
 		r.onModify();
-		int moveTo = colNamePos < beforeColNamePos ? beforeColNamePos - 1 : beforeColNamePos;
+		int moveTo = beforeColNamePos == -1 ? r.getColumnsCount() - 1 : (colNamePos < beforeColNamePos ? beforeColNamePos - 1 : beforeColNamePos);
 		if(r instanceof ColumnarTable) {
 			ColumnarTable ct = (ColumnarTable)r;
 			ColumnarColumn toMove = ct.removeColumn2(colNamePos);

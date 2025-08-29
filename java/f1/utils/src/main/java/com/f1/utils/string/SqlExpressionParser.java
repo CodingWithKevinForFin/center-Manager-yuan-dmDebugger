@@ -131,6 +131,7 @@ public class SqlExpressionParser extends JavaExpressionParser {
 	public static final int ID_COLUMN = 76;
 	public static final int ID_BYNAME = 77;
 	public static final int ID_METHOD = 78;
+	public static final int ID_LAST = 81;
 	private boolean allowSqlInjection = true;
 	private StringBuilder buf = new StringBuilder();
 	private int parenthesisDepth = 0;
@@ -316,6 +317,8 @@ public class SqlExpressionParser extends JavaExpressionParser {
 				return "BYNAME";
 			case ID_MOVE:
 				return "MOVE";
+			case ID_LAST:
+				return "LAST";
 			default:
 				return "UNKNOWN: " + op;
 		}
@@ -927,6 +930,8 @@ public class SqlExpressionParser extends JavaExpressionParser {
 			case 'l' | 4 << 8:
 				if (SH.equalsIgnoreCase("LEFT", buf))
 					return ID_LEFT_JOIN;
+				if (SH.equalsIgnoreCase("LAST", buf))
+					return ID_LAST;
 			case 'L' | 5 << 8:
 			case 'l' | 5 << 8:
 				if (SH.equalsIgnoreCase("LIMIT", buf))
@@ -1919,9 +1924,15 @@ public class SqlExpressionParser extends JavaExpressionParser {
 				case ID_MOVE:
 					col = parseVariableNode(c, buf);
 					sws(c);
-					expectKeywordId(c, ID_BEFORE);
-					sws(c);
-					before = parseVariableNode(c, buf);
+					c.mark();
+					if(getKeywordId(c) == ID_BEFORE) {
+						sws(c);
+						before = parseVariableNode(c, buf);
+					}else
+						c.returnToMark();
+					if(getKeywordId(c) == ID_LAST) {
+						before = null; 
+					}
 					break;
 				case ID_USE:
 					usePosition = position;
