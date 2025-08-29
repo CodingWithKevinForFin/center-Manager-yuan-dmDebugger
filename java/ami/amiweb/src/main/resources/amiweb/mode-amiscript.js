@@ -75,7 +75,7 @@ var AmiScriptHighlightRules = function(options) {
         	"select|insert|into|update|delete|from|where|group|by|order|limit|offset|having|as|case|"+
 	        "when|end|type|left|right|join|only|on|outer|desc|asc|union|create|table|primary|key|" +
 	        "foreign|references|default|inner|cross|natural|database|drop|grant|values|alter|"+
-	        "analyze|prepare|step|add|rename|modify|to|in|use|window|partition|unpack|truncate|byname|call|move"
+	        "analyze|prepare|step|add|rename|modify|to|in|use|window|partition|unpack|truncate|byname|call|move|before"
 	        ,
 	    "keyword.class":
             "FormField|FormSelectField|Session|FileSystem|Panel|Relationship|Table"+
