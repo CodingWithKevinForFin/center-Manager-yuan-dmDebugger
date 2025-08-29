@@ -81,7 +81,16 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 	
 	@Override
 	public Table processColumnMove(CalcFrameStack sf, int tableNamePos, String tableName, String colname, int colNamePos, String beforeColname, int beforeColNamePos, int scope) {
-		throw new UnsupportedOperationException();
+		Table r = getTable(sf, tableNamePos, tableName, scope);
+		r.onModify();
+		int moveTo = colNamePos < beforeColNamePos ? beforeColNamePos - 1 : beforeColNamePos;
+		if(r instanceof ColumnarTable) {
+			ColumnarTable ct = (ColumnarTable)r;
+			ColumnarColumn toMove = ct.removeColumn2(colNamePos);
+			ct.addColumn(moveTo, toMove);
+		}else
+			throw new UnsupportedOperationException("MOVE NOT Supported for Non-ColumnarTable");
+		return r;
 	}
 
 	@Override
