@@ -901,7 +901,12 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			if (this.cancelButton == button)
 				close();
 			else {
-				int nuwPos = indexField.getValue().intValue();
+				Double indexValue = indexField.getValue();
+				if(indexValue == null) {
+					AmiCenterManagerUtils.popDialog(service, "Please choose a number to move the column to:", "Error Moving Column");
+					return;
+				}
+				int nuwPos = indexValue.intValue();
 				if (nuwPos == origLoc) {
 					AmiCenterManagerUtils.popDialog(service, "The Row is already at position:" + nuwPos, "Error Moving Column");
 					return;
