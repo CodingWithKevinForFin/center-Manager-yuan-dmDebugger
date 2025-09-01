@@ -3426,6 +3426,7 @@ function MultiCheckboxField(portlet,id,title){
     this.input = this.element;
     
 	this.options=new Map();
+	this.filteredOptions=new Map();
     this.checked = new Array();
     // for storing unconfirmed selections (menu still open)
     this.pending = new Array();
@@ -3529,6 +3530,9 @@ MultiCheckboxField.prototype.show=function(){
 	menu.show(new Point(r.left,r.top+this.height), true);
 	menu.setCssStyle(this.style);
 	menu.bypass=true;
+	this.menuHeightBeforeFilter = menu.divElement.style.height;
+	this.menuOverflowBeforeFilter = menu.divElement.style.overflow;
+	menu.owner = that;
 	menu.onHide=function(){
 		  that.fireOnChange();
 		that.menu=null;
@@ -3565,6 +3569,32 @@ MultiCheckboxField.prototype.show=function(){
 
 }
 
+//add
+MultiCheckboxField.prototype.filterOptions = function(searchTerm) {
+	const lowerSearchTerm = searchTerm.toLowerCase();
+    this.filteredOptions = new Map(Array.from(this.options).filter(([key, value]) =>
+    value.toLowerCase().includes(lowerSearchTerm)
+
+    ));
+    //clear and rebuild the menu
+   const table = this.menu.divElement.children[0];
+   //remove all the rows except for the search box
+   while (table.rows.length > 1) {
+       table.deleteRow(1);
+     }
+
+   //remove the divElement.style.height, and let this be determined by the number of filtered options
+	var calcuatedContainerHeight = this.filteredOptions.size*28 + 37+10;
+	if(calcuatedContainerHeight <  parseInt(this.menuHeightBeforeFilter )){
+		this.menu.divElement.style.height = `${calcuatedContainerHeight}px`;
+		this.menu.divElement.style.overflow = 'hidden'; //remove scroll
+	} else{
+		this.menu.divElement.style.height = this.menuHeightBeforeFilter;
+		this.menu.divElement.style.overflow = this.menuOverflowBeforeFilter;
+	}
+   this.menu.createMenu(this.updateMenuJson(), function(e, action){});   
+}
+
 MultiCheckboxField.prototype.isChecked=function(option){
 	var idx = this.checked.indexOf(option);
 	return (idx!=-1);
@@ -3597,8 +3627,21 @@ MultiCheckboxField.prototype.createMenuJson=function(){
 	menu.text="";
 	menu.type="menu";
 	menu.style = "_cna=test";
+	
+	//add
+	var searchItem = {};
+	searchItem.text = "<input type='text' class='search-box' placeholder='Search...'>";
+	searchItem.type = "search";
+	searchItem.noIcon = true;
+	searchItem.autoclose = false;
+	//TODO: this can be controlled by config 
+	searchItem.enabled = true;
+	//searchItem.onclickJs = 'g("'+portletId+'").getField("'+fieldId+'")'+'.toggleSelectedCheckBox();';
+	searchItem.style = "_cna=search-box-td"
+	menu.children[0] = searchItem;
 
-	var i = 0;
+	
+	var i = 1;
 	var that = this;
 	var fieldId = this.id;
 	var portletId = this.portlet.getId();
@@ -3621,6 +3664,39 @@ MultiCheckboxField.prototype.createMenuJson=function(){
 	}
 	
 
+	return menu;
+}
+
+//add. called when the use types on the search box
+MultiCheckboxField.prototype.updateMenuJson=function(){
+	var menu = {};
+	menu.children = [];
+	menu.enabled = true;
+	menu.text="";
+	menu.type="menu";
+	menu.style = "_cna=test";
+
+	var i = 0;
+	var that = this;
+	var fieldId = this.id;
+	var portletId = this.portlet.getId();
+	var jsGetField = 'g("'+portletId+'").getField("'+fieldId+'")';
+	for(var [option, val] of this.filteredOptions){
+		var item = {};
+		var checked=this.isChecked(option);
+//		if (checked) {
+//			this.pending.push(option);
+//		}
+		item.text = "<input type='checkbox' "+ (checked?"checked":"") +" name='"+ option +"' >" + escapeHtml(val) +"";
+		item.type = "action";
+		item.enabled = "true";
+		item.noIcon = true;
+		item.autoclose = false;
+		item.onclickJs = jsGetField+'.toggleSelectedCheckBox();';
+		item.style = "_cna=multicheckbox_menuitem"
+		menu.children[i] = item;
+		i++;
+	}
 	return menu;
 }
 

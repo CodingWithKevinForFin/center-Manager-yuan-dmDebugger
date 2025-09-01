@@ -271,35 +271,34 @@ Menu.prototype.navigateMenu=function(key){
 		var loops = 0;
 		while((this.selected == oldSelected || !this.isEnabledMenuItem(menuItems[this.selected])) && loops < menuItems.length){
 			if(key === "ArrowDown"){
-				if(!this.scrollPane){
-					// at the bottom of the suggestion
-					if(this.selected == (menuItems.length - 1) || this.selected == (this.totalSuggestionSize - 1))
-					this.selected = 0;
+				if(this.selected == (menuItems.length - 1)){
+					//add
+					if(this.hasSearch) //ingore search box
+						this.selected = 1;
 					else
-						this.selected++;
+						this.selected = 0;
 				}else{
-					if(this.selected == (menuItems.length - 1)){
-						this.onKeydownCausingBoundsChange();
-						break;
-					}else
 					this.selected++;
 				}
 			}
 			else if (key === "ArrowUp"){
-				if(!this.scrollPane){
-					// at the top of the suggestion
-					if(this.selected == 0)
-						this.selected = this.totalSuggestionSize ? this.totalSuggestionSize - 1 : menuItems.length - 1;
-					else
+				if(this.hasSearch){
+					if(this.selected == 1){
+						this.selected = menuItems.length - 1;
+					}
+					else{
 						this.selected--;
+					}
 				}else{
 				if(this.selected == 0){
-						this.onKeyupCausingBoundsChange();
-						break;
-					}else
+					this.selected = menuItems.length - 1;
+				}
+				else{
 					this.selected--;
 				}
 			}
+			}
+				
 			loops++;
 		}
 		this.highlight(menuItems[this.selected], true);		
@@ -574,7 +573,9 @@ Menu.prototype.handleMousemove=function(e){
 					if(targetMenu.selected != null)
 						targetMenu.highlight(menuItems[targetMenu.selected], false);
 					targetMenu.selected = index;
-					targetMenu.highlight(menuItems[targetMenu.selected], true);
+					//add, don't highlight search box menu item
+					if(!this.hasSearch || index != 0)		
+						targetMenu.highlight(menuItems[targetMenu.selected], true);
 					this.selectedBy="MOUSE";
 				}
 //				var func = function(w, currentIndex, menu){
@@ -692,6 +693,10 @@ Menu.prototype.createMenu=function(menu, clickCallback){
 	this.applyBorderStyle(menu);
 	this.setHoverStyle(menu);
 	if(menu.children){
+		if(menu.children.length > 0){
+		    if(menu.children[0].type && menu.children[0].type === 'search')
+		    	this.hasSearch = true;
+		} 
 		for(var i = 0; i < menu.children.length; i++){
 			this.addMenuItem(menu.children[i], clickCallback);
 		}
@@ -711,9 +716,51 @@ Menu.prototype.addMenuItem = function(menu, clickCallback) {
 		this.addAction(menu, clickCallback);
 	} else if (menu.type === "divider") {
 		this.addDivider(menu);
+	} else if (menu.type === "search" ){
+		this.addSearch(menu);
 	}
 	
 }
+
+Menu.prototype.addSearch = function(menu, clickCallback) {
+	this.hasSearch = true;
+	var row = nw("tr");
+	var text = nw("td");
+	if (menu.enabled) {
+		row._itemId = menu.action;
+		this.isSelectMenu = menu.style != null && menu.style.includes('selectfield');
+		var autoclose = menu.autoclose == false ? false : true;
+		var f = menu.onclickJs != null ? new this.window.Function(menu.onclickJs) : null;
+		row.id=menu.hids;
+
+		row.keystroke= menu.keystroke;
+		//row.onclick._itemId = menu.action;
+	} else {
+		row.className = 'menu_item disabled';
+	}
+
+    if (menu.text) { // affects all the texts.
+        text.innerHTML = menu.text;
+        text.children[0].addEventListener('input', (e) => {
+        	this.owner.filterOptions(e.target.value);
+        });
+		//this is to reconcile different default inline-height in different browsers. Firefox has a different in-line height than other browsers, which will add extra padding to the font height
+		text.style.lineHeight = 1;
+    }
+
+    if (menu.style)
+        applyStyle(row, menu.style);
+    if (menu.noIcon != true){
+        var icon = nw("td");
+        if (menu.backgroundImage) {
+            icon.style.backgroundImage = "url('" + menu.backgroundImage + "')";
+        }
+        row.appendChild(icon);
+    }
+    row.appendChild(text);
+    this.tableElement.appendChild(row);
+}
+
 
 Menu.prototype.addMenu = function(menu, clickCallback) {
 	var row = nw("tr");

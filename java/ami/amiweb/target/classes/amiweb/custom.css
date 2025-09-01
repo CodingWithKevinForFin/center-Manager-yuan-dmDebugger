@@ -2681,3 +2681,11 @@ button.ami_fix_schema_button {
 	display:flex;
 	justify-content:flex-start;	
 }
+
+.search-box {
+	width: 100%;
+	padding: 8px;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	margin-bottom: 5px;
+}
