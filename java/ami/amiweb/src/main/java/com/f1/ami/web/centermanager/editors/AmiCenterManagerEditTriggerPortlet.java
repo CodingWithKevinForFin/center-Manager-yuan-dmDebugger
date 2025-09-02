@@ -160,6 +160,8 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		this.correlationNode = correlationNode;
 		//never allow editing trigger type
 		this.triggerTypeField.setDisabled(true);
+		this.triggerOnField.setBgColor("#e2e2e2");
+		this.triggerOnField.setDisabled(true);
 		this.importFromText(triggerSql, new StringBuilder());
 		//add form portlet listener
 		this.curEditor.getForm().addFormPortletListener(this);
@@ -305,7 +307,7 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		for (FormPortletField<?> fpf : this.form.getFormFields()) {
 			if (fpf == this.triggerTypeField)
 				continue;
-			if (fpf != this.enableEditingCheckbox)
+			if (fpf != this.enableEditingCheckbox && fpf != triggerOnField)
 				fpf.setDisabled(!enable);
 		}
 		onTriggerOnClauseChanged(this.triggerOnField);
