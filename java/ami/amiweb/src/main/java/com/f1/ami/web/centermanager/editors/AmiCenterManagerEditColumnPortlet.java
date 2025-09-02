@@ -1770,6 +1770,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			Matcher preMatcher = ADD_PATTERN.matcher(prevSingleton);
 			if(preMatcher.matches()) {
 				String prev_add_col_name = preMatcher.group(1);
+				String prev_before_col = SH.afterFirst(preMatcher.group(2), "BEFORE ");
 				if(SH.equals("RENAME", keyword_cur)) {	   
 		            Matcher curMatcher = RENAME_PATTERN.matcher(curSql);
 		            if(curMatcher.matches()) {
@@ -1805,7 +1806,19 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 					 if(SH.equals(prev_add_col_name, cur_col2Drop)) {
 						 canCollapse = true;
 						 resultSql = "";
-					 }				
+					 } else if(SH.equals(prev_before_col, cur_col2Drop)) {
+						 System.out.println("the column after `before` has been dropped");
+						 canCollapse = true;
+						 //find the new col after `before`
+						 Integer prev_add_col_name_idx = curColumns.indexOf(prev_add_col_name);
+						 if(prev_add_col_name_idx == curColumns.size() - 1)
+							 resultSql = SH.beforeLast(prevSingleton, " BEFORE");
+						 else {
+							 String nuw_before_col = curColumns.get(prev_add_col_name_idx + 1);
+							 resultSql = SH.beforeLast(prevSingleton, " BEFORE") + " BEFORE " + nuw_before_col;
+						 }
+						 
+					 }		
 					
 				}else if(SH.equals("ADD", keyword_cur) || SH.equals("MOVE", keyword_cur)) {
 					//no op
@@ -1818,13 +1831,25 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			Matcher preMatcher = MOVE_PATTERN.matcher(prevSingleton);
 			if(preMatcher.matches()){
 				String prev_move = preMatcher.group(1);
+				String prev_move_before = preMatcher.group(4);
 				if(SH.equals("DROP", keyword_cur)) {
 					String cur_col2Drop = SH.afterFirst(curSql, " ");
 					
 					 if(SH.equals(prev_move, cur_col2Drop)) {
 						 canCollapse = true;
 						 resultSql = "";
-					 }				
+					 }else if(SH.equals(prev_move_before, cur_col2Drop)) {
+						 System.out.println("the column after `before` has been dropped");
+						 canCollapse = true;
+						 //find the new col after `before`
+						 Integer col_after_prev_move_idx = curColumns.indexOf(prev_move);
+						 if(col_after_prev_move_idx == curColumns.size() - 1)
+							 resultSql = "";
+						 else {
+							 String nuw_move_before = curColumns.get(col_after_prev_move_idx + 1);
+							 resultSql = "MOVE " + prev_move + " BEFORE " + nuw_move_before;
+						 }
+					 }			
 					
 				} else if(SH.equals("MOVE", keyword_cur)) {
 					Matcher postMatcher = MOVE_PATTERN.matcher(curSql);
