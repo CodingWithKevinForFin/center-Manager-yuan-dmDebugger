@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsResponse;
 import com.f1.ami.web.AmiWebFormPortletAmiScriptField;
@@ -531,8 +532,14 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 
 	@Override
 	public String previewEdit() {
-		// TODO Auto-generated method stub
-		return null;
+		StringBuilder sb = new StringBuilder();
+		String origName = triggerNameField.getDefaultValue();
+		String curName = triggerNameField.getValue();
+		//first check if the name has changed
+		if(!SH.equals(origName, curName)) {
+			sb.append("RENAME TRIGGER ").append(AmiUtils.escapeVarName(origName)).append(" TO ").append(AmiUtils.escapeVarName(curName));
+		}
+		return sb.toString();
 	}
 
 	@Override
