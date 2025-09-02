@@ -1795,6 +1795,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			            if(SH.equals(prev_add_col_name, cur_oldName) && !origColNames.contains(cur_newName)) {
 			            	canCollapse = true;
 			            	resultSql = "ADD " + AmiUtils.escapeVarName(cur_newName) + " " + cur_type;
+			            	if(SH.is(prev_before_col))
+			            		resultSql += "BEFORE " + prev_before_col;
 							
 			            }
 					}else
