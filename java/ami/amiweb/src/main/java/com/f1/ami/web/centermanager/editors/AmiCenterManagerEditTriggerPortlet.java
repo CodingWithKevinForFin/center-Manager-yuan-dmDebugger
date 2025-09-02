@@ -558,6 +558,11 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			AmiCenterManagerUtils.popDialog(service, "The trigger name field cannot be empty", "Error Applying Changes");
 			return false;
 		}
+		if(this.editedFields.isEmpty()) {
+			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
+			return false;
+		}
+			
 		return true;
 	}
 
