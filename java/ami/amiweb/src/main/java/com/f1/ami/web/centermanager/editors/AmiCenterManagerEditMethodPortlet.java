@@ -566,5 +566,11 @@ public class AmiCenterManagerEditMethodPortlet extends AmiCenterManagerAbstractE
 	public boolean ensureCanProceedWithApply() {
 		return true;
 	}
+	
+	@Override
+	public void checkCanDropAndRecreate() {
+		throw new UnsupportedOperationException();
+		
+	}
 
 }

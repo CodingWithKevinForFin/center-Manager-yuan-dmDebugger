@@ -26,7 +26,7 @@ import com.f1.ami.web.centermanager.editors.triggers.AmiCenterManagerTriggerEdit
 import com.f1.ami.web.centermanager.editors.triggers.AmiCenterManagerTriggerEditor_RelayTrigger;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Trigger;
-
+import com.f1.ami.web.centermanager.portlets.AmiCenterManagerReviewApplyScriptPortlet;
 import com.f1.base.Action;
 import com.f1.base.Row;
 import com.f1.base.Table;
@@ -498,6 +498,12 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 				String name = (String) r.get("TableName");
 				this.triggerOnField.addOption(name, name);
 			}
+		}else if(response.getReturnType() == Boolean.class) {
+			System.out.println("return a boolean");
+			boolean canDropAndRecreate = (boolean)response.getReturnValue();
+			if(canDropAndRecreate) {
+				getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, previewEdit()), 1000, 750);
+			}
 		}
 	}
 
@@ -530,14 +536,17 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		service.sendRequestToBackend(this, request);
 	}
 
+	//only call this when the drop and recreate check has been passed
 	@Override
 	public String previewEdit() {
 		StringBuilder sb = new StringBuilder();
 		String origName = triggerNameField.getDefaultValue();
 		String curName = triggerNameField.getValue();
-		//first check if the name has changed
-		if(!SH.equals(origName, curName)) {
+		//first check if the name has changed, and if the only thing that has changed is name 
+		if(!SH.equals(origName, curName) && editedFields.size() == 1) {
 			sb.append("RENAME TRIGGER ").append(AmiUtils.escapeVarName(origName)).append(" TO ").append(AmiUtils.escapeVarName(curName));
+		}else {
+			sb.append("DROP TRIGGER ").append(origName).append(';').append(previewScript());
 		}
 		return sb.toString();
 	}
@@ -550,6 +559,13 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			return false;
 		}
 		return true;
+	}
+
+	@Override
+	public void checkCanDropAndRecreate() {
+		sendQueryToBackend("true");
+		//sendQueryToBackend("ALTER TRIGGER " + this.triggerNameField.getDefaultValue());
+		
 	}
 
 }

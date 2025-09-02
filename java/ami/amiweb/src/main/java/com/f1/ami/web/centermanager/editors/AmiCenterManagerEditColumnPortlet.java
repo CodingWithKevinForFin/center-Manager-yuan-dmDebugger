@@ -2033,4 +2033,10 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		
 	}
 
+	@Override
+	public void checkCanDropAndRecreate() {
+		throw new UnsupportedOperationException();
+		
+	}
+
 }

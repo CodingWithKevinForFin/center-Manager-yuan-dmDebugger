@@ -125,12 +125,17 @@ public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends Gr
 		} else if (button == this.applyButton) {
 			if(ensureCanProceedWithApply()) {
 				String sql = isAdd ? previewScript() : previewEdit();
-				getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, sql), 1000, 750);
+				if(this instanceof AmiCenterManagerEditColumnPortlet)
+					getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, sql), 1000, 750);
+				else
+					checkCanDropAndRecreate();
 			}
 			
 
 		}
 	}
+	
+	public abstract void checkCanDropAndRecreate();
 
 	public AmiCenterGraphNode getCorrelationNode() {
 		return this.correlationNode;

@@ -447,5 +447,10 @@ public class AmiCenterManagerEditProcedurePortlet extends AmiCenterManagerAbstra
 		return true;
 		
 	}
+	
+	@Override
+	public void checkCanDropAndRecreate() {
+		
+	}
 
 }

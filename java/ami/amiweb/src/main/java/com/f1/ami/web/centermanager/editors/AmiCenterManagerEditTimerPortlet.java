@@ -530,5 +530,11 @@ public class AmiCenterManagerEditTimerPortlet extends AmiCenterManagerAbstractEd
 		return true;
 		
 	}
+	
+	@Override
+	public void checkCanDropAndRecreate() {
+		
+		
+	}
 
 }
