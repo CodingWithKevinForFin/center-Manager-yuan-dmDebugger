@@ -105,7 +105,135 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 	}
 	
 	private void test(CalcFrameStack sf) {
-		
+		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
+		final AmiTriggerBinding binding = this.getBinding();
+		final AmiTableImpl sourceTable = db.getAmiTable(binding.getTableNameAt(0));
+		final AmiTableImpl targetTable = db.getAmiTable(binding.getTableNameAt(1));
+		final com.f1.base.CalcTypes sourceVariables = sourceTable.getTable().getColumnTypesMapping();
+
+		final AmiImdbScriptManager sm = db.getScriptManager();
+		final SqlExpressionParser ep = sm.getSqlProcessor().getExpressionParser();
+
+		final Set<String> targetGroupBysVisited = new HashSet<String>();
+		final DerivedCellCalculator[] groupBys;
+		final String[] groupByTargets;
+		{ //groupBy
+			ChildCalcTypesStack context = new ChildCalcTypesStack(sf, sourceVariables, sm.getMethodFactory());
+			String groupBy = binding.getOption(Caster_String.INSTANCE, "groupBys", null);
+			SqlColumnsNode groupByNodes = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_GROUPBY, groupBy);
+			//			Node[] cols = groupByNodes.columns;
+			groupBys = new DerivedCellCalculator[groupByNodes.getColumnsCount()];
+			groupByTargets = new String[groupByNodes.getColumnsCount()];
+			if (groupBys.length == 0)
+				throw new RuntimeException("GROUPBYS options must have atleast one group by clause");
+
+			for (int i = 0; i < groupByNodes.getColumnsCount(); i++) {
+				Node col = groupByNodes.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("GROUPBYS option should be in the form: targetColumn=aggFormulaOnSourceColumn", e);
+				}
+				if (targetTable.getColumnNoThrow(targetName) == null)
+					throw new RuntimeException("GROUPBYS option has unknown assignment column: " + targetName);
+				groupBys[i] = sm.getSqlProcessor().getParser().toCalc(op.getRight(), context);
+				groupByTargets[i] = targetName;
+				if (!targetGroupBysVisited.add(targetName))
+					throw new RuntimeException("GROUPBYS option has duplicate target column definition: " + targetName);
+			}
+		}
+
+		final DerivedCellCalculator[] aggregates;
+		final String[] aggregateTargets;
+		final AmiTriggerAggFactory af = new AmiTriggerAggFactory(sm.getMethodFactory(), this);
+		final Set<Object> tmpSet = new HashSet<Object>();
+		{ //aggregates
+			ChildCalcTypesStack context = new ChildCalcTypesStack(sf, sourceVariables, af);
+			String aggregatesString = binding.getOption(Caster_String.INSTANCE, "selects", null);
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_GROUPBY, aggregatesString);
+			//			Node[] cols = node1.columns;
+			aggregates = new DerivedCellCalculator[node1.getColumnsCount()];
+			aggregateTargets = new String[node1.getColumnsCount()];
+
+			Set<String> targetsVisited = new HashSet<String>();
+			for (int i = 0; i < node1.getColumnsCount(); i++) {
+				Node col = node1.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("SELECTS option should be in the form: targetColumn=aggFormulaOnSourceColumn", e);
+				}
+				if (targetTable.getColumnNoThrow(targetName) == null)
+					throw new RuntimeException("SELECTS option has unknown assignment column: " + targetName);
+				aggregates[i] = sm.getSqlProcessor().getParser().toCalc(op.getRight(), context);
+				tmpSet.clear();
+				getDependencyIdsIgnoreAgg(aggregates[i], tmpSet);
+
+				if (!tmpSet.isEmpty())
+					throw new RuntimeException("Source variable '" + CH.first(tmpSet) + "' must be inside an aggregate for SELECTS option");
+				aggregateTargets[i] = targetName;
+
+				if (!targetGroupBysVisited.add(targetName))
+					throw new RuntimeException("SELECTS option and groupBy option share duplicate target column definition: " + targetName);
+				if (!targetsVisited.add(targetName))
+					throw new RuntimeException("SELECTS option has duplicate target column definition: " + targetName);
+			}
+		}
+		this.targetTable = targetTable;
+		//This is not needed as the trigger has not been dropped yet
+		//db.assertNotLockedByTrigger(this, targetTable.getName());
+		this.allowExternalUpdates = binding.getOption(Caster_Boolean.INSTANCE, "allowExternalUpdates", Boolean.FALSE);
+		this.lockedTables = allowExternalUpdates ? Collections.EMPTY_SET : Collections.singleton(this.targetTable.getName());
+		this.sourceTable = sourceTable;
+
+		this.aggregateCount = aggregates.length;
+		this.aggregateSources = aggregates;
+		this.aggregateTargets = aggregateTargets;
+		this.aggregateTargetPos = getPositions(targetTable, this.aggregateTargets);
+
+		this.groupByCount = groupBys.length;
+		this.groupBySources = groupBys;
+		this.groupByTargets = groupByTargets;
+		this.groupByTargetPos = getPositions(targetTable, this.groupByTargets);
+		this.tmpKey = new Object[this.groupByCount];
+		this.tmpOnUpdatingKey = new Object[this.groupByCount];
+
+		this.aggregateCalcs = AH.toArray(af.getAggregates(), AmiTriggerAgg.class);
+		this.aggregateCalcsCount = aggregateCalcs.length;
+
+		this.aggregateCalcs2 = AH.toArray(af.getAggregates2(), AmiTriggerAgg2.class);
+		this.aggregateCalcsCount2 = aggregateCalcs2.length;
+		this.aggregateCalcsCountBoth = this.aggregateCalcsCount + this.aggregateCalcsCount2;
+
+		this.aggregateCalcsUnderlyingCount = this.aggregateCalcsCount + this.aggregateCalcsCount2 * 2;
+		this.aggregateCalcsUnderlying = new DerivedCellCalculator[this.aggregateCalcsUnderlyingCount];
+		this.tmpUnderlying = new Object[this.aggregateCalcsUnderlyingCount];
+		this.tmpOnUpdatingUnderlying = new Object[this.aggregateCalcsUnderlyingCount];
+
+		this.dependenciesDef = AmiTrigger_Join.getDependenciesDef(this.getImdb(), sourceTable, targetTable);
+		boolean aggregatesHaveState = false;
+		for (int i = 0; i < aggregateCalcsCount; i++) {
+			AmiTriggerAgg amiTriggerAgg = this.aggregateCalcs[i];
+			this.aggregateCalcsUnderlying[i] = amiTriggerAgg.getInner();
+			aggregatesHaveState = aggregatesHaveState || amiTriggerAgg.needsHelper();
+		}
+
+		for (int i = 0, n = this.aggregateCalcsCount; i < aggregateCalcsCount2; i++, n += 2) {
+			AmiTriggerAgg2 amiTriggerAgg = this.aggregateCalcs2[i];
+			this.aggregateCalcsUnderlying[n] = amiTriggerAgg.getInner1();
+			this.aggregateCalcsUnderlying[n + 1] = amiTriggerAgg.getInner2();
+			aggregatesHaveState = aggregatesHaveState || amiTriggerAgg.needsHelper();
+		}
+		this.aggregatesHaveState = aggregatesHaveState;
+		this.targetTableNeedsRebuild = true;
 	}
 	
 	private void build(CalcFrameStack sf) {
