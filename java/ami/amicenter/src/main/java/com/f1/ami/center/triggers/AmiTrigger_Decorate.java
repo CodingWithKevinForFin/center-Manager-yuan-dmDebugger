@@ -76,7 +76,89 @@ public class AmiTrigger_Decorate extends AmiAbstractTrigger {
 	}
 	
 	private void test(CalcFrameStack sf) {
-		
+		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
+		final AmiTriggerBinding binding = this.getBinding();
+		final AmiImdbScriptManager sm = db.getScriptManager();
+		final SqlProcessor sqlProcessor = sm.getSqlProcessor();
+		final SqlExpressionParser ep = sqlProcessor.getExpressionParser();
+		this.srcTable = db.getAmiTable(binding.getTableNameAt(0));
+		this.tgtTable = db.getAmiTable(binding.getTableNameAt(1));
+		//This is not needed as the trigger has not been dropped yet
+		//db.assertNotLockedByTrigger(this, tgtTable.getName());
+		NamespaceCalcTypesImpl variables = new NamespaceCalcTypesImpl();
+		com.f1.utils.structs.table.stack.BasicCalcTypes tgtVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
+		com.f1.utils.structs.table.stack.BasicCalcTypes srcVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
+		variables.addNamespace(tgtTable.getName(), tgtTable.getTable().getColumnTypesMapping());
+		variables.addNamespace(srcTable.getName(), srcTable.getTable().getColumnTypesMapping());
+		variables.putAll(tgtTable.getTable().getColumnTypesMapping());
+		tgtVars.putAll(tgtTable.getTable().getColumnTypesMapping());
+		variables.putAll(srcTable.getTable().getColumnTypesMapping());
+		srcVars.putAll(srcTable.getTable().getColumnTypesMapping());
+		final CellParser cp = new AmiTrigger_Join.CellParser(sqlProcessor, tgtTable, srcTable, tgtVars, srcVars);
+		final DerivedCellCalculator tgtIndexKeys[];
+		final DerivedCellCalculator srcIndexKeys[];
+		{//ON
+			String on = binding.getOption(Caster_String.INSTANCE, "on", null);
+
+			ChildCalcTypesStack context = new ChildCalcTypesStack(sf, variables);
+			DerivedCellCalculator onCalc = cp.toCalc(on, context);
+			List<Tuple2<DerivedCellCalculator, DerivedCellCalculator>> sink = new ArrayList<Tuple2<DerivedCellCalculator, DerivedCellCalculator>>();
+			DerivedCellCalculator extra = AmiTrigger_Join.toAndsForIndex(onCalc, sink, tgtVars, srcVars, tgtTable.getName(), srcTable.getName());
+			if (extra != null || sink.isEmpty())
+				throw new RuntimeException("ON option must be of the form: leftColumn==rightColumn [&& leftColumn==rightColumn ...]");
+			int pos = 0;
+			tgtIndexKeys = new DerivedCellCalculator[sink.size()];
+			srcIndexKeys = new DerivedCellCalculator[sink.size()];
+			for (Tuple2<DerivedCellCalculator, DerivedCellCalculator> i : sink) {
+				DerivedCellCalculatorRef l = (DerivedCellCalculatorRef) i.getA();
+				DerivedCellCalculatorRef r = (DerivedCellCalculatorRef) i.getB();
+				tgtIndexKeys[pos] = l;
+				srcIndexKeys[pos] = r;
+				pos++;
+			}
+		}
+		this.keysChange = binding.getOption(Caster_Boolean.INSTANCE, "keysChange", false);
+		this.tgtIndexKeys = tgtIndexKeys;
+		this.srcIndexKeys = srcIndexKeys;
+		this.tmpKey = new Object[tgtIndexKeys.length];
+		this.updKey = new Object[tgtIndexKeys.length];
+
+		{//SELECTS
+			String assignments = binding.getOption(Caster_String.INSTANCE, "selects", null);
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_SELECT, assignments);
+			//			Node[] cols = node1.columns;
+			int colsCount = node1.getColumnsCount();
+			tgtColumns = new String[colsCount];
+			tgtColumnPos = new int[colsCount];
+			tgtCalcs = new DerivedCellCalculator[colsCount];
+			ChildCalcTypesStack context = new ChildCalcTypesStack(sf, srcVars);
+			for (int i = 0; i < colsCount; i++) {
+				Node col = node1.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("selects option should be in the form: targetColumn=sourceColumnsExpression", e);
+				}
+				AmiColumnImpl<?> colm = tgtTable.getColumnNoThrow(targetName);
+				if (colm == null)
+					throw new RuntimeException("selects option has unknown assignment column: " + targetName);
+				DerivedCellCalculator calc = sqlProcessor.getParser().toCalc(op.getRight(), context);
+				tgtColumns[i] = colm.getName();
+				tgtColumnPos[i] = colm.getLocation();
+				if (colm.getType() != calc.getReturnType())
+					calc = new DerivedCellCalculatorCast(0, colm.getType(), calc, sm.getMethodFactory().getCaster(colm.getType()));
+				tgtCalcs[i] = calc;
+			}
+		}
+		this.tmpVal = new Object[tgtCalcs.length];
+		this.tmpChanges = new int[tgtCalcs.length];
+
+		this.dependenciesDef = AmiTrigger_Join.getDependenciesDef(this.getImdb(), this.srcTable, this.tgtTable);
+		this.targetTableNeedsRebuild = true;
 	}
 
 	@Override
