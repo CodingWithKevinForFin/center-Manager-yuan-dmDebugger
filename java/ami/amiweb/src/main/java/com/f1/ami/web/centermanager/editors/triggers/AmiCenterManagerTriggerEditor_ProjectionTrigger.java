@@ -64,7 +64,7 @@ public class AmiCenterManagerTriggerEditor_ProjectionTrigger extends AmiCenterMa
 		allowExternalUpdatesField.setLeftPosPx(185).setTopPosPx(40);
 
 		wheresField = form.addField(new FormPortletTextField(AmiCenterManagerUtils.formatRequiredField("wheres")));
-		wheresField.setName(AmiCenterEntityConsts.GROUP_NAME_REQUIRED_FIELD);
+		//wheresField.setName(AmiCenterEntityConsts.GROUP_NAME_REQUIRED_FIELD);
 		wheresField.setLeftPosPx(FORM_LEFT_POSITION).setWidth(600).setHeight(25).setTopPosPx(90);
 		wheresField.setHelp("A comma-delimited list of boolean expressions that must all be true on a source table's row in order for it to be projected into the target table:"
 				+ "<br>" + "<b><i style=\"color:blue\">expression_on_sourceTableColumns,[ expression_on_sourceTableColumns ...]</i></b>");
@@ -141,13 +141,13 @@ public class AmiCenterManagerTriggerEditor_ProjectionTrigger extends AmiCenterMa
 		StringBuilder sb = new StringBuilder();
 		if (SH.is(wheresField.getValue()))
 			sb.append(" wheres = ").append(SH.doubleQuote(wheresField.getValue()));
-		else
-			sb.append(" wheres = ").append(AmiCenterEntityConsts.REQUIRED_FEILD_WARNING);
+//		else
+//			sb.append(" wheres = ").append(AmiCenterEntityConsts.REQUIRED_FEILD_WARNING);
 
 		if (SH.is(selectsEditor.getOutput()))
 			sb.append(" selects = ").append(SH.doubleQuote(selectsEditor.getOutput()));
-		else
-			sb.append(" selects = ").append(AmiCenterEntityConsts.REQUIRED_FEILD_WARNING);
+//		else
+//			sb.append(" selects = ").append(AmiCenterEntityConsts.REQUIRED_FEILD_WARNING);
 
 		if (allowExternalUpdatesField.getBooleanValue())
 			sb.append(" allowExternalUpdates = ").append(SH.doubleQuote("true"));
@@ -311,6 +311,14 @@ public class AmiCenterManagerTriggerEditor_ProjectionTrigger extends AmiCenterMa
 	@Override
 	public Set<? extends FormPortlet> getSmartEditors() {
 		return CH.s(this.selectsEditor);
+	}
+	
+	public String getWheresFieldValue() {
+		return wheresField.getValue();
+	}
+	
+	public String getSelectsFieldValue() {
+		return selectsEditor.getOutput();
 	}
 
 }

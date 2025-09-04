@@ -561,6 +561,17 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			AmiCenterManagerUtils.popDialog(service, "The trigger name field cannot be empty", "Error Applying Changes");
 			return false;
 		}
+		//checking trigger-type-specific required fields
+//		if(curEditor == projectionEditor) {
+//			if(SH.isnt(projectionEditor.getWheresFieldValue())){
+//				AmiCenterManagerUtils.popDialog(service, "The wheres field cannot be empty", "Error Applying Changes");
+//				return false;
+//			}
+//			if(SH.isnt(projectionEditor.getSelectsFieldValue())){
+//				AmiCenterManagerUtils.popDialog(service, "The selects field cannot be empty", "Error Applying Changes");
+//				return false;
+//			}
+//		}
 		if(this.editedFields.isEmpty()) {
 			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
 			return false;

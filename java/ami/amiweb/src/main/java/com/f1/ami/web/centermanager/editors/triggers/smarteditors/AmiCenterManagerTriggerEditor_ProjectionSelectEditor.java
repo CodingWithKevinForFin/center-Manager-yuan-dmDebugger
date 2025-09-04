@@ -80,7 +80,7 @@ public class AmiCenterManagerTriggerEditor_ProjectionSelectEditor extends FormPo
 
 		selectExpressionField = this.addField(new FormPortletTextField(""));
 		selectExpressionField.setHasButton(true);
-		selectExpressionField.setName(AmiCenterEntityConsts.GROUP_NAME_SKIP_ONFIELDCHANGED);
+		//selectExpressionField.setName(AmiCenterEntityConsts.GROUP_NAME_SKIP_ONFIELDCHANGED);
 		selectExpressionField.setCorrelationData(new Formula() {
 
 			@Override
