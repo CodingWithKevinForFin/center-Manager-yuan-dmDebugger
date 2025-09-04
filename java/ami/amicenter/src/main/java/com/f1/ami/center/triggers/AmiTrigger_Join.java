@@ -92,7 +92,165 @@ public class AmiTrigger_Join extends AmiAbstractTrigger {
 	}
 	
 	protected void test(CalcTypesStack cfs) {
-		
+		if (this.getBinding().getTableNamesCount() != 3)
+			throw new RuntimeException("JOIN trigger must be on exactly three tables (left table, right table)");
+
+		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
+		final AmiTriggerBinding binding = this.getBinding();
+		final AmiImdbScriptManager sm = db.getScriptManager();
+		final SqlProcessor sqlProcessor = sm.getSqlProcessor();
+		final SqlExpressionParser ep = sqlProcessor.getExpressionParser();
+
+		AmiTableImpl leftTable = db.getAmiTable(binding.getTableNameAt(0));
+		AmiTableImpl rghtTable = db.getAmiTable(binding.getTableNameAt(1));
+		AmiTableImpl targetTable = db.getAmiTable(binding.getTableNameAt(2));
+		//This is not needed as the trigger has not been dropped yet
+		//db.assertNotLockedByTrigger(this, targetTable.getName());
+
+		NamespaceCalcTypesImpl variables = new NamespaceCalcTypesImpl();
+		com.f1.utils.structs.table.stack.BasicCalcTypes leftVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
+		com.f1.utils.structs.table.stack.BasicCalcTypes rghtVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
+		CalcTypes leftMapping = leftTable.getTable().getColumnTypesMapping();
+		CalcTypes rghtMapping = rghtTable.getTable().getColumnTypesMapping();
+		variables.addNamespace(leftTable.getName(), leftMapping);
+		variables.addNamespace(rghtTable.getName(), rghtMapping);
+		for (String i : leftMapping.getVarKeys()) {
+			Class<?> type = leftMapping.getType(i);
+			variables.putType(i, type);
+			//			String key = leftTable.getName() + "." + i;
+			//			variables.putType(key, type);
+			leftVars.putType(i, type);
+			//			leftVars.putType(key, type);
+		}
+		for (String i : rghtMapping.getVarKeys()) {
+			Class<?> type = rghtMapping.getType(i);
+			variables.putType(i, type);
+			//			String key = rghtTable.getName() + "." + i;
+			//			variables.putType(key, type);
+			rghtVars.putType(i, type);
+			//			rghtVars.putType(key, type);
+		}
+		final CellParser cp = new CellParser(sqlProcessor, leftTable, rghtTable, leftVars, rghtVars);
+
+		final boolean includeOuterLeft;
+		final boolean includeOuterRight;
+		final boolean includeInner;
+		{//TYPE
+			String type = binding.getOption(Caster_String.INSTANCE, "type", "INNER");
+			type = type.toUpperCase().trim().replace(" +", " ");
+			if ("LEFT".equals(type)) {
+				includeInner = true;
+				includeOuterLeft = true;
+				includeOuterRight = false;
+			} else if ("LEFT ONLY".equals(type)) {
+				includeInner = false;
+				includeOuterLeft = true;
+				includeOuterRight = false;
+			} else if ("RIGHT".equals(type)) {
+				includeInner = true;
+				includeOuterLeft = false;
+				includeOuterRight = true;
+			} else if ("RIGHT ONLY".equals(type)) {
+				includeInner = false;
+				includeOuterLeft = false;
+				includeOuterRight = true;
+			} else if ("INNER".equals(type)) {
+				includeInner = true;
+				includeOuterLeft = false;
+				includeOuterRight = false;
+			} else if ("OUTER".equals(type)) {
+				includeInner = true;
+				includeOuterLeft = true;
+				includeOuterRight = true;
+			} else if ("OUTER ONLY".equals(type)) {
+				includeInner = false;
+				includeOuterLeft = true;
+				includeOuterRight = true;
+			} else
+				throw new RuntimeException("Invalid value for TYPE option: " + type + " (must be either INNER, LEFT, RIGHT, OUTER, LEFT ONLY, RIGHT ONLY or OUTER ONLY)");
+		}
+
+		final DerivedCellCalculator leftIndexKeys[];
+		final DerivedCellCalculator rghtIndexKeys[];
+		ChildCalcTypesStack context = new ChildCalcTypesStack(cfs, variables, sm.getMethodFactory());
+		{//ON
+			String on = binding.getOption(Caster_String.INSTANCE, "on", null);
+
+			DerivedCellCalculator onCalc = cp.toCalc(on, context);
+			List<Tuple2<DerivedCellCalculator, DerivedCellCalculator>> sink = new ArrayList<Tuple2<DerivedCellCalculator, DerivedCellCalculator>>();
+			DerivedCellCalculator extra = toAndsForIndex(onCalc, sink, leftVars, rghtVars, leftTable.getName(), rghtTable.getName());
+			if (extra != null || sink.isEmpty())
+				throw new RuntimeException("ON option must be of the form: leftColumn==rightColumn [&& leftColumn==rightColumn ...]");
+			leftIndexKeys = new DerivedCellCalculator[sink.size()];
+			rghtIndexKeys = new DerivedCellCalculator[sink.size()];
+			int pos = 0;
+			for (Tuple2<DerivedCellCalculator, DerivedCellCalculator> i : sink) {
+				DerivedCellCalculator l = (DerivedCellCalculatorRef) i.getA();
+				DerivedCellCalculator r = (DerivedCellCalculatorRef) i.getB();
+				if (l.getReturnType() != r.getReturnType()) {
+					Class<?> type = OH.getWidest(l.getReturnType(), r.getReturnType());
+					if (l.getReturnType() != type)
+						l = new DerivedCellCalculatorCast(l.getPosition(), type, l, CasterManager.getCaster(type));
+					if (r.getReturnType() != type)
+						r = new DerivedCellCalculatorCast(r.getPosition(), type, r, CasterManager.getCaster(type));
+				}
+				leftIndexKeys[pos] = l;
+				rghtIndexKeys[pos] = r;
+				pos++;
+			}
+		}
+		String[] targetColumns;
+		int[] targetColumnPos;
+		DerivedCellCalculator[] targetCalcs;
+
+		{//SELECTS
+			String assignments = binding.getOption(Caster_String.INSTANCE, "selects", null);
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_SELECT, assignments);
+			//			Node[] cols = node1.columns;
+			targetColumns = new String[node1.getColumnsCount()];
+			targetColumnPos = new int[node1.getColumnsCount()];
+			targetCalcs = new DerivedCellCalculator[node1.getColumnsCount()];
+			for (int i = 0; i < node1.getColumnsCount(); i++) {
+				Node col = node1.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("selects option should be in the form: targetColumn=sourceColumn", e);
+				}
+				AmiColumnImpl<?> colm = targetTable.getColumnNoThrow(targetName);
+				if (colm == null)
+					throw new RuntimeException("selects option has unknown assignment column: " + targetName);
+				DerivedCellCalculator calc = cp.toCalc(op.getRight(), context);
+				targetColumns[i] = colm.getName();
+				targetColumnPos[i] = colm.getLocation();
+				targetCalcs[i] = calc;
+			}
+		}
+
+		this.leftKeys = leftIndexKeys;
+		this.rghtKeys = rghtIndexKeys;
+		this.tmpKey = new Object[leftKeys.length];
+		this.updatingKey = new Object[leftKeys.length];
+		this.targetCalcs = targetCalcs;
+		this.targetColumnPos = targetColumnPos;
+		this.targetColumns = targetColumns;
+		this.keys2Lar.clear();
+		this.left2targets.clear();
+		this.rght2targets.clear();
+		this.leftTable = leftTable;
+		this.rghtTable = rghtTable;
+		this.bindingTables = CH.l(leftTable.getName(), rghtTable.getName(), targetTable.getName());
+		this.targetTable = targetTable;
+		this.includeOuterLeft = includeOuterLeft;
+		this.includeOuterRight = includeOuterRight;
+		this.includeInner = includeInner;
+		this.lockedTables = Collections.singleton(this.targetTable.getName());
+		this.dependenciesDef = getDependenciesDef(this.getImdb(), leftTable, rghtTable, targetTable);
+		this.targetTableNeedsRebuild = true;
 	}
 	
 	protected void build(CalcTypesStack cfs) {
