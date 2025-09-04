@@ -554,4 +554,39 @@ public class SqlProcessor_Admin {
 		return r;
 	}
 
+	public void processAlterTrigger(CalcFrameStack sf, AdminNode node) {
+		final SqlProcessorTableMutator mutator = owner.getMutator();
+		if (node.getTargetType() != SqlExpressionParser.ID_TRIGGER)
+			throw new ExpressionParserException(node.getPosition(), "Expecting: TRIGGER");
+		MethodNode singletonMethod = JavaExpressionParser.castNode(node.getNext(), MethodNode.class);
+		AdminNode newTrigger = (AdminNode) singletonMethod.getParamAt(0);
+		
+		SqlOperationNode newTriggerNode = JavaExpressionParser.castNode(newTrigger.getNext(), SqlOperationNode.class);
+		SqlOperationNode newTypeNode = JavaExpressionParser.castNode(newTriggerNode.getNext(), SqlOperationNode.class);
+		SqlColumnsNode newTableNameNode = JavaExpressionParser.castNode(newTypeNode.getNext(), SqlColumnsNode.class);
+		SqlOperationNode newPriorityNode = newTableNameNode.getNext() == null ? null : JavaExpressionParser.castNode(newTableNameNode.getNext(), SqlOperationNode.class);
+		int newPriority;
+		try {
+			newPriority = newPriorityNode == null ? 0 : ((Number) SH.parseConstant(newPriorityNode.getNameAsString())).intValue();
+		} catch (Exception e) {
+			throw new ExpressionParserException(newPriorityNode.getPosition(), "Not a valid number: " + newPriorityNode.getNameAsString(), e);
+		}
+		Map<String, Node> newUseOptions = newTrigger.getUseNode() != null ? newTrigger.getUseNode().getOptionsMap() : Collections.EMPTY_MAP;
+		String newTriggerName = newTriggerNode.getNameAsString();
+		int newTriggerNamePos = newTriggerNode.getPosition();
+		String newTypeName = newTypeNode.getNameAsString();
+		int newTypeNamePos = newTypeNode.getPosition();
+		//		Node[] columns = tableNameNode.columns;
+		String newTableNames[] = new String[newTableNameNode.getColumnsCount()];
+		int newTableNamesPos[] = new int[newTableNameNode.getColumnsCount()];
+		for (int i = 0; i < newTableNames.length; i++) {
+			newTableNames[i] = JavaExpressionParser.castNode(newTableNameNode.getColumnAt(i), VariableNode.class).getVarname();
+			newTableNamesPos[i] = newTableNameNode.getColumnAt(i).getPosition();
+		}
+			
+		this.owner.getMutator().processTriggerAlterCheck(sf, singletonMethod.getMethodName(), singletonMethod.getPosition(), newTriggerName, newTriggerNamePos, newTypeName,
+				newTypeNamePos, newTableNames, newTableNamesPos, newPriority, newUseOptions);
+		
+	}
+
 }

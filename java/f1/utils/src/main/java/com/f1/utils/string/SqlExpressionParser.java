@@ -597,6 +597,7 @@ public class SqlExpressionParser extends JavaExpressionParser {
 						addStopKeywordId(ID_MODIFY);
 						addStopKeywordId(ID_DROP);
 						addStopKeywordId(ID_MOVE);
+						addStopKeywordId(ID_AS);//for "ALTER TRIGGER bla AS CREATE TRIGGER newTrigger OFTYPE ...."
 						return (parseAlter(position, c));
 					case ID_CALL:
 						return (parseCall(position, c));
@@ -1853,13 +1854,34 @@ public class SqlExpressionParser extends JavaExpressionParser {
 			sws(c);
 		} else
 			options = null;
-		if (type != ID_TABLE && type != ID_DBO)
+		if (type != ID_TABLE && type != ID_DBO && type != ID_TRIGGER)
 			throw new ExpressionParserException(pos, "expecting: DBO or TABLE");
 		VariableNode next = parseVariableNode(c, buf);
 		sws(c);
+		
+		if(type == ID_TRIGGER) {
+			Node newTrigger = parseAlterTrigger(c);
+			List<Node> newSingletonTrigger = CH.l(newTrigger);
+			return new AdminNode(position, ID_ALTER, ID_TRIGGER, new MethodNode(position, next.toString(), newSingletonTrigger), null, options);
+		}
 		List<Node> updates = parseAlterColumns(c);
 		return new AdminNode(position, ID_ALTER, type, new MethodNode(position, next.toString(), updates), null, options);
+
 	}
+	
+	//returns the new trigger AdminNode
+	private AdminNode parseAlterTrigger(CharReader c){
+		expectKeywordId(c, ID_AS);
+		sws(c);
+		expectKeywordId(c, ID_CREATE);
+		sws(c);
+		expectKeywordId(c, ID_TRIGGER);
+		sws(c);
+		int pos = c.getCountRead();
+		AdminNode newTrigger = parseCreateTrigger(pos, c);
+		return newTrigger;
+	}
+	
 	private List<Node> parseAlterColumns(CharReader c) {
 		final List<Node> parts = new ArrayList<Node>();
 		int usePosition = -1;

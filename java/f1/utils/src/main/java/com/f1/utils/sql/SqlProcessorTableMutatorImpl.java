@@ -29,6 +29,7 @@ import com.f1.utils.string.ExpressionParserException;
 import com.f1.utils.string.Node;
 import com.f1.utils.string.SqlExpressionParser;
 import com.f1.utils.string.node.MethodNode;
+import com.f1.utils.string.sqlnode.AdminNode;
 import com.f1.utils.structs.table.BasicTable;
 import com.f1.utils.structs.table.ColumnPositionMapping;
 import com.f1.utils.structs.table.columnar.ColumnarColumn;
@@ -723,5 +724,14 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 	public boolean hasIndex(CalcFrameStack sf, Table table, String columnName) {
 		return false;
 	}
+
+	@Override
+	public boolean processTriggerAlterCheck(CalcFrameStack sf, String triggerName, int triggerNamePos, String newTriggerName, int newTriggerNamePos, String newTypeName,
+			int newTypeNamePos, String[] newTableNames, int[] newTableNamesPos, int newPriority, Map<String, Node> newUseOptions) {
+		throw new ExpressionParserException(triggerNamePos, "ALTER TRIGGER not supported");		
+
+	}
+
+	
 
 }

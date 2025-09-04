@@ -148,6 +148,8 @@ public class SqlProcessor implements Lockable {
 				case SqlExpressionParser.ID_ALTER:
 					if (an.getTargetType() == SqlExpressionParser.ID_TABLE)
 						adminProcessor.processAlterTable(sf, an);
+					else if(an.getTargetType() == SqlExpressionParser.ID_TRIGGER)
+						adminProcessor.processAlterTrigger(sf, an);
 					else
 						adminProcessor.processAlterUse(sf, an);
 					return null;

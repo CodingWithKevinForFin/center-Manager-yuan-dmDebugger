@@ -93,11 +93,15 @@ import com.f1.utils.sql.SqlProjector.TempIndex;
 import com.f1.utils.sql.TableReturn;
 import com.f1.utils.sql.Tableset;
 import com.f1.utils.string.ExpressionParserException;
+import com.f1.utils.string.JavaExpressionParser;
 import com.f1.utils.string.Node;
 import com.f1.utils.string.SqlExpressionParser;
 import com.f1.utils.string.node.MethodNode;
 import com.f1.utils.string.node.OperationNode;
 import com.f1.utils.string.node.VariableNode;
+import com.f1.utils.string.sqlnode.AdminNode;
+import com.f1.utils.string.sqlnode.SqlColumnsNode;
+import com.f1.utils.string.sqlnode.SqlOperationNode;
 import com.f1.utils.structs.LongSet;
 import com.f1.utils.structs.table.BasicTable;
 import com.f1.utils.structs.table.ColumnPositionMapping;
@@ -3133,6 +3137,75 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 			return r;
 		}
 
+	}
+
+	@Override
+	public  boolean processTriggerAlterCheck(CalcFrameStack sf, String triggerName, int triggerNamePos, String newTriggerName, int newTriggerNamePos, String newTypeName, int newTypeNamePos, String newTableNames[], int newTableNamesPos[],
+			int newPriority, Map<String, Node> newUseOptions) {
+		AmiImdbSession session = AmiCenterUtils.getSession(sf);
+		session.assertCanAlter();
+		if (session.getObjectsManager().getAmiTrigger(triggerName) == null) 
+			throw new ExpressionParserException(triggerNamePos, "Trigger does not exist:" + triggerName);
+		
+		if (AmiUtils.isResevedTableName(newTriggerName))
+			throw new ExpressionParserException(newTriggerNamePos, "Security Violation: Trigger name is reserved: " + newTriggerName);
+		//Assuming the trigger type and the table names cannot be altered
+		AmiTriggerFactory factory = session.getImdb().getTriggerFactory(newTypeName);
+		Set<String> visited = new HashSet<String>();
+		for (int i = 0; i < newTableNames.length; i++) {
+			String tname = newTableNames[i];
+			if (!visited.add(tname))
+				throw new ExpressionParserException(newTableNamesPos[i], "Duplicate Table Reference: " + tname);
+			AmiTable amiTable = session.getImdb().getAmiTable(tname);
+			if (amiTable != null)
+				ensureNotSystem(newTableNamesPos[i], amiTable);
+			if (session.getImdb().isStartupComplete()) {
+				if (amiTable == null) {
+					if (session.getTableNoThrow(tname) != null)
+						throw new ExpressionParserException(newTableNamesPos[i], "Can only create triggers on PUBLIC Tables: " + tname);
+					else
+						throw new ExpressionParserException(newTableNamesPos[i], "Table not found: " + tname);
+				}
+			}
+		}
+		
+		Map<String, Object> newUseOptionsMap = AmiUtils.processOptions(newTypeNamePos, newUseOptions, factory, this.getParser(), sf, true);
+		AmiTrigger trigger = factory.newTrigger();
+
+		AmiTriggerBindingImpl nuw_tb = new AmiTriggerBindingImpl(triggerName, trigger, newPriority, newTableNames, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
+		try {
+			nuw_tb.test(session.getImdb(), sf);
+		} catch (Exception e) {
+			if (SH.is(e.getMessage()))
+				throw new ExpressionParserException(triggerNamePos, "For " + nuw_tb.getTriggerType() + ": " + e.getMessage(), e);
+			else
+				throw new ExpressionParserException(triggerNamePos, "For " + nuw_tb.getTriggerType() + ": Invalid trigger configuration", e);
+		}
+		
+		//		if (session.getImdb().isStartupComplete()) {
+//			try {
+//				tb.startup(session.getImdb(), sf);
+//			} catch (Exception e) {
+//				if (SH.is(e.getMessage()))
+//					throw new ExpressionParserException(triggerNamePos, "For " + tb.getTriggerType() + ": " + e.getMessage(), e);
+//				else
+//					throw new ExpressionParserException(triggerNamePos, "For " + tb.getTriggerType() + ": Invalid trigger configuration", e);
+//			}
+//			session.getObjectsManager().addTrigger(tb, sf);
+//			session.getObjectsManager().bindTriggersToTables(tb, sf);
+//			session.getImdb().onSchemaChanged(sf);
+//			try {
+//				tb.onInitialized(sf);
+//			} catch (Exception e) {
+//				if (SH.is(e.getMessage()))
+//					throw new ExpressionParserException(triggerNamePos, "For " + tb.getTriggerType() + ": " + e.getMessage(), e);
+//				else
+//					throw new ExpressionParserException(triggerNamePos, "For " + tb.getTriggerType() + ": Failed onStartup", e);
+//			}
+//		} else
+//			session.getObjectsManager().addTrigger(tb, sf);
+		
+		return false;
 	}
 
 }
