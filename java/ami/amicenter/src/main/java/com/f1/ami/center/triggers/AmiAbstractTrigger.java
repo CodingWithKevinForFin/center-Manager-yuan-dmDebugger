@@ -22,8 +22,17 @@ public abstract class AmiAbstractTrigger implements AmiTrigger {
 		this.binding = binding;
 		onStartup(sf);
 	}
+	
+	@Override
+	final public void test(AmiImdb imdb, AmiTriggerBinding binding, CalcFrameStack sf) {
+		this.imdb = (AmiImdbImpl) imdb;
+		this.binding = binding;
+		onTest(sf);
+	}
 
 	abstract protected void onStartup(CalcFrameStack sf);
+	
+	abstract protected void onTest(CalcFrameStack sf);
 
 	@Override
 	public boolean onUpdating(AmiTable table, AmiRow row, AmiPreparedRow updatingTo, CalcFrameStack sf) {

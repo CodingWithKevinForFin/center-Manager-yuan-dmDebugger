@@ -329,4 +329,9 @@ public class AmiTrigger_Relay extends AmiAbstractTrigger implements AmiImdbFlush
 		this.client.close();
 	}
 
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		throw new UnsupportedOperationException();		
+	}
+
 }

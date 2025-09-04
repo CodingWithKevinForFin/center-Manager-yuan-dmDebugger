@@ -12,6 +12,7 @@ import com.f1.utils.sql.SqlProjector.TempIndex;
 import com.f1.utils.string.Node;
 import com.f1.utils.string.node.MethodNode;
 import com.f1.utils.string.sqlnode.AdminNode;
+import com.f1.utils.structs.Tuple2;
 import com.f1.utils.structs.table.ColumnPositionMapping;
 import com.f1.utils.structs.table.columnar.ColumnarTable;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
@@ -85,6 +86,6 @@ public interface SqlProcessorTableMutator {
 	public Iterable<Row> findSortIndex(CalcFrameStack sf, Table table, String columnName, boolean asc);
 	public boolean hasIndex(CalcFrameStack sf, Table table, String columnName);
 	
-	public boolean processTriggerAlterCheck(CalcFrameStack sf, String triggerName, int triggerNamePos, String newTriggerName, int newTriggerNamePos, String newTypeName, int newTypeNamePos, String newTableNames[], int newTableNamesPos[],
+	public Tuple2<Boolean, String> processTriggerAlterCheck(CalcFrameStack sf, String triggerName, int triggerNamePos, String newTriggerName, int newTriggerNamePos, String newTypeName, int newTypeNamePos, String newTableNames[], int newTableNamesPos[],
 			int newPriority, Map<String, Node> newUseOptions);
 }

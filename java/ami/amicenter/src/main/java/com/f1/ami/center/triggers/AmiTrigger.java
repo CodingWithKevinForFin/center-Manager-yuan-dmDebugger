@@ -31,6 +31,8 @@ import com.f1.utils.structs.table.stack.CalcFrameStack;
  * 
  */
 public interface AmiTrigger {
+	
+	public void test(AmiImdb imdb, AmiTriggerBinding binding, CalcFrameStack sf);
 
 	/**
 	 * Called once at startup, this is a good spot to grab needed tables, columns, indexes, etc that you will use at runtime.

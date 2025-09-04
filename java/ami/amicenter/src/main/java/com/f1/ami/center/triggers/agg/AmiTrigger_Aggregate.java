@@ -90,12 +90,24 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 			throw new RuntimeException("AGGREGATE trigger must be on exactly two tables (source table, target table)");
 		build(sf);
 	}
+	
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		this.stackFramePool = getImdb().getState().getStackFramePool();
+		if (this.getBinding().getTableNamesCount() < 2)
+			throw new RuntimeException("UNION trigger must have at least two tables (source table(s) followed by a target table)");
+		test(sf);
+	}
 
 	@Override
 	public void onInitialized(CalcFrameStack sf) {
 		rebuildTargetTable(sf);
 	}
-
+	
+	private void test(CalcFrameStack sf) {
+		
+	}
+	
 	private void build(CalcFrameStack sf) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
 		final AmiTriggerBinding binding = this.getBinding();

@@ -491,18 +491,21 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			return;
 		}
 		AmiCenterQueryDsResponse response = (AmiCenterQueryDsResponse) result.getAction();
+		Action a = result.getRequestMessage().getAction();
+		String query = null;
+		if (a instanceof AmiCenterQueryDsRequest) {
+			AmiCenterQueryDsRequest request = (AmiCenterQueryDsRequest) a;
+			query = request.getQuery();
+		}
 		if (response.getOk() && response.getTables().size() == 1) {
 			Table t = response.getTables().get(0);
-			//populate table names into the ON field options
-			for (Row r : t.getRows()) {
-				String name = (String) r.get("TableName");
-				this.triggerOnField.addOption(name, name);
-			}
-		}else if(response.getReturnType() == Boolean.class) {
-			System.out.println("return a boolean");
-			boolean canDropAndRecreate = (boolean)response.getReturnValue();
-			if(canDropAndRecreate) {
-				getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, previewEdit()), 1000, 750);
+			if(query.startsWith("ALTER TRIGGER")) {
+				Row r = t.getRow(0);
+				boolean canDropAndRecreate = (boolean) r.get("Success");
+				if(canDropAndRecreate)
+					getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, previewEdit()), 1000, 750);
+				else
+					AmiCenterManagerUtils.popDialog(service, (String) r.get("Exception"), "Error Editing Trigger");
 			}
 		}
 	}
@@ -568,9 +571,7 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 
 	@Override
 	public void checkCanDropAndRecreate() {
-		sendQueryToBackend("true");
-		//sendQueryToBackend("ALTER TRIGGER " + this.triggerNameField.getDefaultValue());
-		
+		sendQueryToBackend("ALTER TRIGGER " + AmiUtils.escapeVarName(triggerNameField.getDefaultValue()) + " AS " + previewScript());	
 	}
 
 }

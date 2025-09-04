@@ -116,6 +116,12 @@ public class AmiTriggerBindingImpl implements AmiTriggerBinding {
 		this.pool = amiImdb.getState().getStackFramePool();
 		this.trigger.startup(amiImdb, this, sf);
 	}
+	
+	public void test(AmiImdbImpl amiImdb, CalcFrameStack sf) {
+		this.db = amiImdb;
+		this.pool = amiImdb.getState().getStackFramePool();
+		this.trigger.test(amiImdb, this, sf);
+	}
 
 	@Override
 	public String getTriggerType() {

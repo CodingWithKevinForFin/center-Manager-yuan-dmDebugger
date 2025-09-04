@@ -12,6 +12,7 @@ import com.f1.base.Column;
 import com.f1.base.Row;
 import com.f1.base.Table;
 import com.f1.base.TableList;
+import com.f1.utils.CH;
 import com.f1.utils.OH;
 import com.f1.utils.SH;
 import com.f1.utils.string.ExpressionParserException;
@@ -33,6 +34,8 @@ import com.f1.utils.string.sqlnode.SqlColumnDefNode;
 import com.f1.utils.string.sqlnode.SqlColumnsNode;
 import com.f1.utils.string.sqlnode.SqlOperationNode;
 import com.f1.utils.string.sqlnode.UseNode;
+import com.f1.utils.structs.Tuple2;
+import com.f1.utils.structs.table.BasicColumn;
 import com.f1.utils.structs.table.columnar.ColumnarTable;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
 import com.f1.utils.structs.table.derived.DerivedCellCalculatorBlock;
@@ -554,12 +557,20 @@ public class SqlProcessor_Admin {
 		return r;
 	}
 
-	public void processAlterTrigger(CalcFrameStack sf, AdminNode node) {
+	public TableReturn processAlterTrigger(CalcFrameStack sf, AdminNode node) {
 		final SqlProcessorTableMutator mutator = owner.getMutator();
 		if (node.getTargetType() != SqlExpressionParser.ID_TRIGGER)
 			throw new ExpressionParserException(node.getPosition(), "Expecting: TRIGGER");
 		MethodNode singletonMethod = JavaExpressionParser.castNode(node.getNext(), MethodNode.class);
 		AdminNode newTrigger = (AdminNode) singletonMethod.getParamAt(0);
+		
+		ArrayList<Column> colsDef = new ArrayList<Column>();
+		colsDef.add(new BasicColumn(Boolean.class, "Success"));
+		colsDef.add(new BasicColumn(String.class, "Exception"));
+		Table result = new ColumnarTable(colsDef);
+		result.setTitle("Alter Trigger Check");
+		Row r = result.newEmptyRow();
+		result.getRows().add(r);
 		
 		SqlOperationNode newTriggerNode = JavaExpressionParser.castNode(newTrigger.getNext(), SqlOperationNode.class);
 		SqlOperationNode newTypeNode = JavaExpressionParser.castNode(newTriggerNode.getNext(), SqlOperationNode.class);
@@ -569,7 +580,10 @@ public class SqlProcessor_Admin {
 		try {
 			newPriority = newPriorityNode == null ? 0 : ((Number) SH.parseConstant(newPriorityNode.getNameAsString())).intValue();
 		} catch (Exception e) {
-			throw new ExpressionParserException(newPriorityNode.getPosition(), "Not a valid number: " + newPriorityNode.getNameAsString(), e);
+			r.put("Success", false);
+			r.put("Exception",  "Priority is Not a valid number: " + newPriorityNode.getNameAsString());
+			return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
+			//throw new ExpressionParserException(newPriorityNode.getPosition(), "Not a valid number: " + newPriorityNode.getNameAsString(), e);
 		}
 		Map<String, Node> newUseOptions = newTrigger.getUseNode() != null ? newTrigger.getUseNode().getOptionsMap() : Collections.EMPTY_MAP;
 		String newTriggerName = newTriggerNode.getNameAsString();
@@ -584,9 +598,17 @@ public class SqlProcessor_Admin {
 			newTableNamesPos[i] = newTableNameNode.getColumnAt(i).getPosition();
 		}
 			
-		this.owner.getMutator().processTriggerAlterCheck(sf, singletonMethod.getMethodName(), singletonMethod.getPosition(), newTriggerName, newTriggerNamePos, newTypeName,
+		Tuple2<Boolean, String> res = this.owner.getMutator().processTriggerAlterCheck(sf, singletonMethod.getMethodName(), singletonMethod.getPosition(), newTriggerName, newTriggerNamePos, newTypeName,
 				newTypeNamePos, newTableNames, newTableNamesPos, newPriority, newUseOptions);
+		boolean isNewTriggerLegal = res.getA();
 		
+		if(isNewTriggerLegal)
+			r.put("Success", true);
+		else {
+			r.put("Success", false);
+			r.put("Exception", res.getB());
+		}
+		return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
 	}
 
 }

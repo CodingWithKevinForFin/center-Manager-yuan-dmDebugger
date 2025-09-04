@@ -68,6 +68,16 @@ public class AmiTrigger_Decorate extends AmiAbstractTrigger {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
 		build(sf);
 	}
+	
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		this.stackFramePool = getImdb().getState().getStackFramePool();
+		test(sf);
+	}
+	
+	private void test(CalcFrameStack sf) {
+		
+	}
 
 	@Override
 	public void onInitialized(CalcFrameStack sf) {

@@ -146,13 +146,15 @@ public class SqlProcessor implements Lockable {
 							throw new ExpressionParserException(node.getPosition(), "Operation not supported: DROP " + SqlExpressionParser.toOperationString(an.getTargetType()));
 					}
 				case SqlExpressionParser.ID_ALTER:
-					if (an.getTargetType() == SqlExpressionParser.ID_TABLE)
+					if (an.getTargetType() == SqlExpressionParser.ID_TABLE) {
 						adminProcessor.processAlterTable(sf, an);
-					else if(an.getTargetType() == SqlExpressionParser.ID_TRIGGER)
-						adminProcessor.processAlterTrigger(sf, an);
-					else
+						return null;
+					} else if(an.getTargetType() == SqlExpressionParser.ID_TRIGGER) {	
+						return adminProcessor.processAlterTrigger(sf, an);
+					} else {
 						adminProcessor.processAlterUse(sf, an);
-					return null;
+						return null;
+					}		
 				case SqlExpressionParser.ID_ENABLE:
 				case SqlExpressionParser.ID_DISABLE:
 					adminProcessor.processEnable(sf, an);

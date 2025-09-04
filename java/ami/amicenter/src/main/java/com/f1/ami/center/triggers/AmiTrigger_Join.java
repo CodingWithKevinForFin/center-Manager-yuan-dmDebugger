@@ -84,6 +84,17 @@ public class AmiTrigger_Join extends AmiAbstractTrigger {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
 		build(sf);
 	}
+	
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		this.stackFramePool = getImdb().getState().getStackFramePool();
+		test(sf);	
+	}
+	
+	protected void test(CalcTypesStack cfs) {
+		
+	}
+	
 	protected void build(CalcTypesStack cfs) {
 
 		if (this.getBinding().getTableNamesCount() != 3)
@@ -779,5 +790,6 @@ public class AmiTrigger_Join extends AmiAbstractTrigger {
 			n = ((ExpressionNode) n).getValue();
 		return n;
 	}
+
 
 }

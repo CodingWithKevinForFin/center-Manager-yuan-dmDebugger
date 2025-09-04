@@ -76,4 +76,9 @@ public class AmiTrigger_Debug extends AmiAbstractTrigger {
 		this.ond = ond;
 		LH.info(log, "Trigger started up");
 	}
+
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		throw new UnsupportedOperationException();
+	}
 }

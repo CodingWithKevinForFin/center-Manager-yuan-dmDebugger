@@ -66,6 +66,16 @@ public class AmiTrigger_Projection extends AmiAbstractTrigger {
 			throw new RuntimeException("UNION trigger must have at least two tables (source table(s) followed by a target table)");
 		build(sf);
 	}
+	
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		this.stackFramePool = getImdb().getState().getStackFramePool();
+		if (this.getBinding().getTableNamesCount() < 2)
+			throw new RuntimeException("UNION trigger must have at least two tables (source table(s) followed by a target table)");
+		test(sf);
+	}
+	
+	
 	@Override
 	public void onInitialized(CalcFrameStack sf) {
 		rebuildTargetTable(sf);
@@ -140,6 +150,135 @@ public class AmiTrigger_Projection extends AmiAbstractTrigger {
 			}
 			return true;
 		}
+	}
+	
+	private void test(CalcFrameStack sf) {
+		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
+		final AmiTriggerBinding binding = this.getBinding();
+		final AmiImdbScriptManager sm = db.getScriptManager();
+		final SqlProcessor sqlProcessor = sm.getSqlProcessor();
+		final SqlExpressionParser ep = sqlProcessor.getExpressionParser();
+
+		AmiTableImpl[] sourceTables = new AmiTableImpl[binding.getTableNamesCount() - 1];
+		Map<String, Assignments> table2Assignments = new HashMap<String, Assignments>();
+		List<String> allSourceTableNames = new ArrayList<String>(sourceTables.length);
+		for (int i = 0; i < sourceTables.length; i++) {
+			String name = binding.getTableNameAt(i);
+			sourceTables[i] = db.getAmiTable(name);
+			allSourceTableNames.add(name);
+		}
+		AmiTableImpl targetTable = (AmiTableImpl) this.getImdb().getAmiTable(this.getBinding().getTableNameAt(sourceTables.length));
+		//Skipping this, since the old trigger has not been dropped yet
+		//db.assertNotLockedByTrigger(this, targetTable.getName());
+		NamespaceCalcTypesImpl sourceTypes = new NamespaceCalcTypesImpl();
+		BasicMultiMap.List<Object, String> cols2sourceTables = new BasicMultiMap.List<Object, String>();
+		for (AmiTableImpl table : sourceTables) {
+			sourceTypes.addNamespace(table.getName(), table.getTable().getColumnTypesMapping());
+			String name = table.getName();
+			Assignments a = new Assignments(table);
+			a.colTypes.addNamespace(table.getName(), table.getTable().getColumnTypesMapping());
+			table2Assignments.put(name, a);
+			for (Column i : table.getTable().getColumns()) {
+				Class<?> type = i.getType();
+				String colName = (String) i.getId();
+				//				String fullColName = name + "." + colName;
+				//				sourceTypes.putType(fullColName, type);
+				Class<?> widest = OH.getWidestIgnoreNull(sourceTypes.getType(colName), type);
+				sourceTypes.putType(colName, widest);
+				cols2sourceTables.putMulti(new NameSpaceIdentifier(name, colName), name);
+				cols2sourceTables.putMulti(colName, name);
+				a.colTypes.putType(colName, type);
+			}
+		}
+		ChildCalcTypesStack context = new ChildCalcTypesStack(sf, sourceTypes, sm.getMethodFactory());
+		{//assignments
+			String assignments = binding.getOption(Caster_String.INSTANCE, "selects", null);
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_SELECT, assignments);
+			//			Node[] cols = node1.columns;
+			Set<Object> sink = new HasherSet<Object>();
+			for (int i = 0; i < node1.getColumnsCount(); i++) {
+				Node col = node1.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("selects option should be in the form: targetColumn=aggFormulaOnSourceColumn", e);
+				}
+				if (targetTable.getColumnNoThrow(targetName) == null)
+					throw new RuntimeException("selects option has unknown assignment column: " + targetName);
+				DerivedCellCalculator calc = sqlProcessor.getParser().toCalc(op.getRight(), context);
+				sink.clear();
+				DerivedHelper.getDependencyIds(calc, sink);
+				List<String> st = null;
+				if (sink.isEmpty()) {
+					st = allSourceTableNames;
+				} else {
+					for (Object s : sink) {
+						List<String> t = cols2sourceTables.get(s);
+						if (st == null)
+							st = t;
+						else if (OH.ne(st, t))
+							throw new RuntimeException(
+									"selects option for '" + targetName + "' has inconsistent table reference mixing: " + SH.join(',', st) + " vs " + SH.join(',', t));
+					}
+				}
+				for (String s : st) {
+					Assignments a = table2Assignments.get(s);
+					if (a.targetToExpression.containsKey(targetName))
+						throw new RuntimeException("selects option for '" + targetName + "' has duplicate target column defition from table: " + s);
+					a.targetToExpression.put(targetName, op.getRight());
+				}
+			}
+		}
+
+		String wheres = binding.getOption(Caster_String.INSTANCE, "wheres", null);
+		if (wheres != null) {
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_WHERE, wheres);
+			//			Node[] cols = node1.columns;
+			Set<Object> sink = new HasherSet<Object>();
+			for (int i = 0; i < node1.getColumnsCount(); i++) {
+				Node col = node1.getColumnAt(i);
+				DerivedCellCalculator calc = sqlProcessor.getParser().toCalc(col, context);
+				sink.clear();
+				DerivedHelper.getDependencyIds(calc, sink);
+				List<String> st = null;
+				if (sink.isEmpty()) {
+					throw new RuntimeException("wheres option cluases must all reference at least one underlying column");
+				} else {
+					for (Object s : sink) {
+						List<String> t = cols2sourceTables.get(s);
+						if (st == null)
+							st = t;
+						else if (OH.ne(st, t))
+							throw new RuntimeException("wheres option for has inconsistent table reference mixing: " + SH.join(',', st) + " vs " + SH.join(',', t));
+					}
+				}
+				for (String s : st) {
+					Assignments a = table2Assignments.get(s);
+					a.filters.add(col);
+				}
+			}
+		}
+		//		CellParser cp = new CellParser(sqlProcessor.getExpressionParser());
+		for (String tn : allSourceTableNames)
+			table2Assignments.get(tn).buildCalcs(sqlProcessor.getParser(), sm.getMethodFactory(), targetTable, sf);
+		//		debug(table2Assignments, allSourceTableNames, targetTable);
+		this.targetTable = targetTable;
+		this.allowExternalUpdates = binding.getOption(Caster_Boolean.INSTANCE, "allowExternalUpdates", Boolean.FALSE);
+		this.lockedTables = allowExternalUpdates ? Collections.EMPTY_SET : Collections.singleton(this.targetTable.getName());
+		this.sourceTables = sourceTables;
+		this.table2Assignments = table2Assignments;
+		try {
+			inTrigger = true;
+			this.targetTable.clearRows(sf);
+		} finally {
+			inTrigger = false;
+		}
+		this.dependenciesDef = AmiTrigger_Join.getDependenciesDef(this.getImdb(), AH.append(sourceTables, targetTable));
+		this.targetTableNeedsRebuild = true;
 	}
 
 	private void build(CalcFrameStack sf) {
