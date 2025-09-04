@@ -100,28 +100,7 @@ public class AmiTrigger_AmiScript extends AmiAbstractTrigger {
 	
 	@Override
 	protected void onTest(CalcFrameStack sf) {
-		this.scriptManager = ((AmiImdbImpl) getImdb()).getScriptManager();
-		this.rowAsMapName = this.getBinding().getOption(Caster_String.INSTANCE, "rowVar", null);
-		this.canMutateRow = this.getBinding().getOption(Caster_Boolean.INSTANCE, "canMutateRow", Boolean.FALSE);
-		this.runOnStartup = this.getBinding().getOption(Caster_Boolean.INSTANCE, "runOnStartup", Boolean.FALSE);
-		this.onInserting = this.getBinding().getOption(Caster_String.INSTANCE, "onInsertingScript", null);
-		this.onInserted = this.getBinding().getOption(Caster_String.INSTANCE, "onInsertedScript", null);
-		this.onUpdating = this.getBinding().getOption(Caster_String.INSTANCE, "onUpdatingScript", null);
-		this.onUpdated = this.getBinding().getOption(Caster_String.INSTANCE, "onUpdatedScript", null);
-		this.onDeleting = this.getBinding().getOption(Caster_String.INSTANCE, "onDeletingScript", null);
-		this.onStartup = this.getBinding().getOption(Caster_String.INSTANCE, "onStartupScript", null);
-		if (this.onInserting == null && this.onInserted == null && this.onUpdating == null && this.onUpdated == null && this.onDeleting == null)
-			throw new RuntimeException("must specify at least one script to run for  trigger");
-		if (this.getBinding().getTableNamesCount() != 1)
-			throw new RuntimeException("must specify exactly one table");
-		this.varTypes.putAll(AmiTimer_AmiScript.parseVarTypes((AmiImdbImpl) getImdb(), this.getBinding().getOption(Caster_String.INSTANCE, "vars", "")));
-		BasicCalcFrame varsMap = new BasicCalcFrame(this.varTypes);
-		this.varsEntries = new Map.Entry[this.varTypes.getVarsCount()];
-		int n = 0;
-		for (String name : varTypes.getVarKeys())
-			this.varsEntries[n++] = varsMap.getOrCreateEntry(name);
-		this.vars = varsMap;
-		this.compile(sf);
+		onStartup(sf);
 	}
 
 	@Override
