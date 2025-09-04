@@ -93,6 +93,86 @@ public class AmiTrigger_Relay extends AmiAbstractTrigger implements AmiImdbFlush
 			client.start(host, port, login, options);
 		build(sf);
 	}
+	
+	@Override
+	protected void onTest(CalcFrameStack sf) {
+		this.stackFramePool = getImdb().getState().getStackFramePool();
+		AmiImdbImpl t = (AmiImdbImpl) this.getImdb();
+		this.om = t.getObjectsManager();
+		if (this.getBinding().getTableNamesCount() != 1)
+			throw new RuntimeException("RELAY trigger must have one table");
+		this.client = new AmiClient();
+		String host = this.getBinding().getOption(String.class, "host");
+		int port = this.getBinding().getOption(Integer.class, "port");
+		String login = this.getBinding().getOption(String.class, "login");
+		String file = this.getBinding().getOption(String.class, "keystoreFile", null);
+		String pass = this.getBinding().getOption(String.class, "keystorePass", null);
+		int options = AmiClient.ENABLE_AUTO_PROCESS_INCOMING | AmiClient.ENABLE_QUIET | AmiClient.ENABLE_SEND_SEQNUM | AmiClient.ENABLE_SEND_TIMESTAMPS;
+//		if (SH.is(file)) {
+//			String pass2 = t.getState().decrypt(pass);
+//			client.start(host, port, login, options, new File(file), pass2);
+//		} else
+//			client.start(host, port, login, options);
+		test(sf);	
+	}
+	
+	private void test(CalcFrameStack cfs) {
+		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
+		final AmiTriggerBinding binding = this.getBinding();
+		final AmiImdbScriptManager sm = db.getScriptManager();
+		final SqlProcessor sqlProcessor = sm.getSqlProcessor();
+		final SqlExpressionParser ep = sqlProcessor.getExpressionParser();
+		final SqlDerivedCellParser p = sqlProcessor.getParser();
+		final AmiTableImpl table = db.getAmiTable(binding.getTableNameAt(0));
+		this.mapping.clear();
+		String selects = binding.getOption(Caster_String.INSTANCE, "derivedValues", null);
+		Map<String, Assignment> mapping = new HashMap<String, Assignment>();
+		ChildCalcTypesStack context = new ChildCalcTypesStack(cfs, table.getTable().getColumnTypesMapping(), sm.getMethodFactory());
+		if (selects != null) {
+			Assignment[] assignments;
+			SqlColumnsNode node1 = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_SELECT, selects);
+			assignments = new Assignment[node1.getColumnsCount()];
+			for (int i = 0; i < node1.getColumnsCount(); i++) {
+				Node col = node1.getColumnAt(i);
+				String targetName;
+				OperationNode op;
+				try {
+					op = (OperationNode) col;
+					VariableNode vn = (VariableNode) op.getLeft();
+					targetName = vn.getVarname();
+				} catch (Exception e) {
+					throw new RuntimeException("selects option should be in the form: target=sourceColumn", e);
+				}
+				DerivedCellCalculator calc = p.toCalc(op.getRight(), context);
+				assignments[i] = new Assignment(targetName, calc);
+			}
+			for (Assignment a : assignments)
+				CH.putOrThrow(mapping, a.targetName, a);
+		}
+		String where = binding.getOption(Caster_String.INSTANCE, "where", null);
+		DerivedCellCalculator whereCalc;
+		if (SH.is(where)) {
+			whereCalc = p.toCalc(where, context);
+			if (!Boolean.class.equals(whereCalc.getReturnType()))
+				throw new RuntimeException("where clause must return boolean: " + where);
+		} else
+			whereCalc = null;
+		for (int i = 0; i < table.getColumnsCount(); i++) {
+			AmiColumnImpl<?> col = table.getColumnAt(i);
+			if (isReserved(col.getName()))
+				continue;
+			if (!mapping.containsKey(col.getName()))
+				mapping.put(col.getName(), new Assignment(col));
+		}
+		this.mapping.putAll(mapping);
+		this.deletes = toAssignments("deletes");
+		this.updates = toAssignments("updates");
+		this.inserts = toAssignments("inserts");
+		this.targetTableName = getBinding().getOption(Caster_String.INSTANCE, "target", table.getName());
+		this.dependenciesDef = AmiTrigger_Join.getDependenciesDef(this.getImdb(), table);
+		this.where = whereCalc;
+	}
+
 
 	private void build(CalcFrameStack cfs) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
@@ -329,9 +409,5 @@ public class AmiTrigger_Relay extends AmiAbstractTrigger implements AmiImdbFlush
 		this.client.close();
 	}
 
-	@Override
-	protected void onTest(CalcFrameStack sf) {
-		throw new UnsupportedOperationException();		
-	}
 
 }
