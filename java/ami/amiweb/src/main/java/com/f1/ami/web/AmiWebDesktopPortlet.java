@@ -811,7 +811,7 @@ public class AmiWebDesktopPortlet extends GridPortlet implements WebDropDownMenu
 			addSpecialPortlet(new AmiWebAmiDbShellPortlet(this.service, generateConfig()), "AMIDB Shell Tool", 1280, 700);
 	}
 	public void showAmiCenterManagerPortlet() {
-		if (!showSpecialPortlet(AmiWebAmiDbShellPortlet.class))
+		if (!showSpecialPortlet(AmiWebCenterManagerPortlet.class))
 			addSpecialPortlet(new AmiWebCenterManagerPortlet(generateConfig(), this.service, "", true, null), "AMI Center Manager", 1250, 700);
 	}
 	public void showStyleManagerPortlet() {
