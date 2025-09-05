@@ -490,7 +490,8 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 		} else if (AmiConsts.TYPE_TRIGGER.equals(amiDataType)) {
 			name = (String) entity.getParam("TriggerName");
 			String tableName = (String) entity.getParam("TableName");
-			onAmiCenterEntityAdded(AmiConsts.TYPE_TRIGGER, name, tableName, readonly);
+			String triggerType = (String) entity.getParam("TriggerType");
+			onAmiCenterEntityAdded(AmiConsts.TYPE_TRIGGER, name, triggerType + "," +  tableName, readonly);
 		} else if (AmiConsts.TYPE_TIMER.equals(amiDataType)) {
 			name = (String) entity.getParam("TimerName");
 			onAmiCenterEntityAdded(AmiConsts.TYPE_TIMER, name, null, readonly);
