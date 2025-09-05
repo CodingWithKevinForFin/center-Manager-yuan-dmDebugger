@@ -314,6 +314,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		this.treeNodeDBOs = createNode(treeNodeCurCenter, "DBOs", AmiWebConsts.CENTER_GRAPH_NODE_DBO, null);
 
 		prepareDbObjectNode();
+		tsc.reapplyState();
 
 	}
 
@@ -429,8 +430,11 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 
 	@Override
 	public Object getId(WebTreeNode node) {
-		// TODO Auto-generated method stub
-		return null;
+		AmiCenterGraphNode data = getData(node);
+		if (data != null)
+			return data;
+		else
+			return node.getName();		
 	}
 
 	@Override
@@ -1067,6 +1071,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				}
 
 			}
+			tsc.reapplyState();
 		}
 
 	}
