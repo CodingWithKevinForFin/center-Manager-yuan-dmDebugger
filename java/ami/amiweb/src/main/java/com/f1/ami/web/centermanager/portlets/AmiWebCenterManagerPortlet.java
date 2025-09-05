@@ -806,6 +806,11 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		// TODO Auto-generated method stub
 
 	}
+	@Override
+	public void onClosed() {
+		this.service.getCenterGraphManager().removeListener(this);
+		super.onClosed();
+	}
 
 	@Override
 	public void onAdded(AmiWebGraphNode<?> node) {
