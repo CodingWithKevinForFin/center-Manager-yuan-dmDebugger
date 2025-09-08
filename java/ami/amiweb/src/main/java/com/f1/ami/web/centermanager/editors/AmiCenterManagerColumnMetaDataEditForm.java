@@ -3,14 +3,19 @@ package com.f1.ami.web.centermanager.editors;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 
 import com.f1.ami.amicommon.AmiConsts;
 import com.f1.ami.amicommon.msg.AmiDatasourceColumn;
+import com.f1.ami.web.AmiWebMenuUtils;
 import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.AmiWebUtils;
 import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
+import com.f1.ami.web.centermanager.editors.triggers.smarteditors.AmiCenterManagerTriggerEditor_AggregateSelectEditor.Formula;
 import com.f1.suite.web.menu.WebMenu;
+import com.f1.suite.web.menu.impl.BasicWebMenu;
+import com.f1.suite.web.menu.impl.BasicWebMenuLink;
 import com.f1.suite.web.portal.PortletConfig;
 import com.f1.suite.web.portal.PortletManager;
 import com.f1.suite.web.portal.impl.ConfirmDialogPortlet;
@@ -26,6 +31,7 @@ import com.f1.suite.web.portal.impl.form.FormPortletSelectField;
 import com.f1.suite.web.portal.impl.form.FormPortletTextField;
 import com.f1.suite.web.portal.impl.form.FormPortletTitleField;
 import com.f1.suite.web.portal.style.PortletStyleManager_Dialog;
+import com.f1.utils.CH;
 import com.f1.utils.OH;
 import com.f1.utils.OneToOne;
 import com.f1.utils.SH;
@@ -33,7 +39,7 @@ import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.IdentityHashSet;
 import com.f1.utils.structs.Tuple2;
 
-public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implements FormPortletListener, FormPortletContextMenuListener, FormPortletContextMenuFactory {
+public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implements  FormPortletListener, FormPortletContextMenuListener, FormPortletContextMenuFactory {
 	public static HashMap<String, String> KEY_TO_NAME_MAP = new HashMap<String, String>();
 	public static String VARNAME_COLUMN_DATA_TYPE = "dataType";
 	public static String VARNAME_COLUMN_NAME = "columnName";
@@ -78,6 +84,9 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 	private FormPortletCheckboxField isAsciiField;
 	private FormPortletCheckboxField isBitmapField;
 	private FormPortletCheckboxField isOndiskField;
+	private FormPortletTextField dfltValField;
+	
+	private AmiCenterManagerEditColumnPortlet columnEditor;
 	private String tableName;
 	private byte mode = MODE_EDIT;
 
@@ -89,9 +98,10 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 	private Map<String, String> columnCache = new HashMap<String, String>();
 	private static final int LEFTPOS = 150;
 
-	public AmiCenterManagerColumnMetaDataEditForm(PortletConfig config, String tableName, byte mode) {
+	public AmiCenterManagerColumnMetaDataEditForm(PortletConfig config, AmiCenterManagerEditColumnPortlet columnEditor, String tableName, byte mode) {
 		super(config);
 		this.service = AmiWebUtils.getService(getManager());
+		this.columnEditor = columnEditor;
 		this.mode = mode;
 
 		this.tableName = tableName;
@@ -202,7 +212,30 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 		cacheUnitField.addOption(AmiConsts.CODE_CACHE_UNIT_TB, AmiConsts.CACHE_UNIT_TB);
 		cacheUnitField.setDefaultValue(AmiConsts.CODE_CACHE_UNIT_DEFAULT_BYTE);
 		cacheUnitField.setLeftPosPx(LEFTPOS + 220).setTopPosPx(240 + offset).setWidthPx(140).setHeight(20);
+		
+		dfltValField = new FormPortletTextField("Default Value");
+		dfltValField.setName("dfltVal");
+		dfltValField.setHasButton(true);
+		dfltValField.setCorrelationData(new Formula() {
 
+			@Override
+			public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
+				BasicWebMenu r = new BasicWebMenu();
+				AmiWebMenuUtils.createOperatorsMenu(r, AmiWebUtils.getService(getManager()), "");
+				WebMenu variables = createVariablesMenu("Columns", getColumnDependencies());
+				r.add(variables);
+				return r;
+			}
+
+			@Override
+			public void onContextMenu(FormPortletField field, String action) {
+				AmiWebMenuUtils.processContextMenuAction(AmiWebUtils.getService(getManager()), action, field);
+
+			}
+		});
+		dfltValField.setLeftPosPx(120).setTopPosPx(315).setWidthPx(300).setHeight(20);
+	
+		
 		this.form.addField(isEnumField);
 		this.form.addField(isCompactField);
 		this.form.addField(isAsciiField);
@@ -212,7 +245,10 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 		this.form.addField(cacheValueField);
 		//not add cacheUnit for now
 		//this.form.addField(cacheUnitField);
-
+		
+		this.form.addField(dfltValField);
+		dfltValField.setVisible(false);
+		
 		//disable all the fields on init
 		disableCache(true);
 		disableAscii(true);
@@ -222,9 +258,23 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 		disableEnum(true);
 
 	}
+	
+	public Set<String> getColumnDependencies(){
+		return columnEditor.getOrigColumnNames();
+	}
+	
+	public static WebMenu createVariablesMenu(String menuName, Set<String> columns) {
+		WebMenu variables = new BasicWebMenu(menuName, true);
 
-	public AmiCenterManagerColumnMetaDataEditForm(PortletConfig config, String tableName, byte mode, String targetColumnName, byte action) {
-		this(config, tableName, mode);
+		for (String column : CH.sort(columns, SH.COMPARATOR_CASEINSENSITIVE_STRING)) {
+			variables.add(new BasicWebMenuLink(column, true, "var_" + column).setAutoclose(false).setCssStyle("_fm=courier"));
+		}
+		return variables;
+	}
+
+
+	public AmiCenterManagerColumnMetaDataEditForm(PortletConfig config, AmiCenterManagerEditColumnPortlet columnEditor, String tableName, byte mode, String targetColumnName, byte action) {
+		this(config, columnEditor, tableName, mode);
 		if (this.mode != MODE_ADD)
 			throw new IllegalArgumentException();
 		this.actionMode = action;
@@ -499,6 +549,20 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 		}
 		return sb.toString();
 	}
+	
+	@Override
+	public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
+		Formula t = (Formula) field.getCorrelationData();
+		return t.createMenu(formPortlet, field, cursorPosition);
+	}
+
+	@Override
+	public void onContextMenu(FormPortlet portlet, String action, FormPortletField field) {
+		if (field == dfltValField) {
+			Formula cb = (Formula) field.getCorrelationData();
+			cb.onContextMenu(field, action);
+		}
+	}
 
 	public void onDataTypeFieldChanged(FormPortletField<?> field) {
 		if (AmiDatasourceColumn.TYPE_STRING == (byte) field.getValue())
@@ -596,6 +660,8 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 			disableBitmap(true);
 		} else if (field == this.isCompactField && !this.isCompactField.getBooleanValue()) {
 			disableBitmap(false);
+		} else if(field == this.dfltValField) {
+			columnEditor.applyDefaultValue(columnNameEditField.getValue(), dfltValField.getValue());
 		}
 	}
 
@@ -703,18 +769,6 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 
 	}
 
-	@Override
-	public void onContextMenu(FormPortlet portlet, String action, FormPortletField node) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	//returns "col1 datatype option"
 	public String previewScript() {
 		StringBuilder sb = new StringBuilder(this.columnNameEditField.getValue());
@@ -754,6 +808,10 @@ public class AmiCenterManagerColumnMetaDataEditForm extends GridPortlet implemen
 		}
 
 		return sb.toString();
+	}
+	
+	public AmiCenterManagerEditColumnPortlet getColumnEditor() {
+		return this.columnEditor;
 	}
 
 }

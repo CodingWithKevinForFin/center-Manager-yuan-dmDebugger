@@ -254,7 +254,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
 
-		this.columnMetaDataEditForm = new AmiCenterManagerColumnMetaDataEditForm(generateConfig(), null, AmiCenterManagerColumnMetaDataEditForm.MODE_EDIT);
+		this.columnMetaDataEditForm = new AmiCenterManagerColumnMetaDataEditForm(generateConfig(), this, null, AmiCenterManagerColumnMetaDataEditForm.MODE_EDIT);
 		this.columnMetaDataEditForm.resetForm();
 		GridPortlet formGrid = new GridPortlet(generateConfig());
 		formGrid.addChild(this.tableInfoPortlet, 0, 0, 1, 1);
@@ -1074,6 +1074,23 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("bitmap")).setValue(bitmap);
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("cache")).setValue(cache);
 		((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("cacheValue")).setValue(cacheVal);
+		
+		if(isNewColumn((String)row.get("columnName"))) {
+			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(true);
+		}else
+			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(false);
+		
+		
+	}
+	
+	public boolean isNewColumn(String name) {
+		for(LinkedList<String> chain: this.editChains) {
+			//find the chain
+			if(chain.getLast().equals(name) && this.origColNames.contains(chain.getFirst())) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
@@ -1883,6 +1900,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return resultSql;
 	}
 	
+	public Set<String> getOrigColumnNames(){
+		return this.origColNames;
+	}
 	
 	public static String getOptionStringForRow(Row r) {
 		StringBuilder sb = new StringBuilder();
@@ -2037,6 +2057,39 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	public void checkCanDropAndRecreate() {
 		throw new UnsupportedOperationException();
 		
+	}
+	
+	//used for "ALTER TABLE ADD COL = COL1 + COL2"
+	//TODO: should we use the latest columns or orig columns?
+	public Set<String> getColumnDependencies(){
+		Set<String> cols = new HashSet<String>();
+		for(String s: curColumns) {
+			if(!isNewColumn(s))
+				cols.add(s);
+		}
+		return cols;
+	}
+
+	public void applyDefaultValue(String colName, String value) {
+		Row logRow = colNames2rows_Log.get(colName);
+		String oldSql = (String) logRow.get("sql");
+		String nuwSql = null;
+		if(SH.is(value)) {
+			nuwSql = SH.beforeLast(oldSql, "=") + "=" + value;
+		}else {
+			nuwSql = SH.beforeLast(oldSql, "=");
+		}
+		logRow.put("sql", nuwSql);
+		
+		//also need to update the cumulative sql for the remaining of the rows
+		for(Row r: userLogTable.getTable().getRows()) {
+			Byte type = (Byte) r.get("type");
+			if(AmiUserEditMessage.ACTION_TYPE_WARNING == type)
+				continue;
+			String oldCumulativeSql = (String) r.get("cumulative_sql"); 
+			String nuwCumulativeSql = oldCumulativeSql.replace(oldSql, nuwSql);
+			r.put("cumulative_sql", nuwCumulativeSql);
+		}
 	}
 
 }
