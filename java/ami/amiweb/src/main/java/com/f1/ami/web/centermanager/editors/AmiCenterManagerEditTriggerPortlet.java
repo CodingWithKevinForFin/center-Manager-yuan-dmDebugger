@@ -560,6 +560,10 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			AmiCenterManagerUtils.popDialog(service, "The trigger name field cannot be empty", "Error Applying Changes");
 			return false;
 		}
+		if(triggerOnField.getValue().isEmpty()) {
+			AmiCenterManagerUtils.popDialog(service, "The trigger ON field cannot be empty", "Error Applying Changes");
+			return false;
+		}
 		//checking trigger-type-specific required fields
 //		if(curEditor == projectionEditor) {
 //			if(SH.isnt(projectionEditor.getWheresFieldValue())){
