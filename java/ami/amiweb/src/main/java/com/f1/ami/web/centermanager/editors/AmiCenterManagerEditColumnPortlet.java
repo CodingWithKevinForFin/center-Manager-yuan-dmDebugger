@@ -1074,13 +1074,17 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("bitmap")).setValue(bitmap);
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("cache")).setValue(cache);
 		((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("cacheValue")).setValue(cacheVal);
-		
-		if(isNewColumn((String)row.get("columnName"))) {
+		String colName = (String)row.get("columnName");
+		if(isNewColumn(colName) && !isReservedColumn(colName)) {
 			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(true);
 		}else
 			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(false);
 		
 		
+	}
+	
+	public boolean isReservedColumn(String name) {
+		return name.length() == 1 && RESERVED_COLUMN_NAMES.contains(name.charAt(0));
 	}
 	
 	public boolean isNewColumn(String name) {
