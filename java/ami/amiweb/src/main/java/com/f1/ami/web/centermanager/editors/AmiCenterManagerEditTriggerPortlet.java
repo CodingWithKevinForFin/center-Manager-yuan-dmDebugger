@@ -160,9 +160,9 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		this(config, false);
 		this.correlationNode = correlationNode;
 		//never allow editing trigger type
-		this.triggerTypeField.setDisabled(true);
+		//this.triggerTypeField.setDisabled(true);
 		this.triggerOnField.setBgColor("#e2e2e2");
-		this.triggerOnField.setDisabled(true);
+		//this.triggerOnField.setDisabled(true);
 		this.importFromText(triggerSql, new StringBuilder());
 		//add form portlet listener
 		this.curEditor.getForm().addFormPortletListener(this);
@@ -225,14 +225,13 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 	@Override
 	public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {
 		super.onFieldValueChanged(portlet, field, attributes);
+		onFieldChanged(field);
 		if (field == this.triggerTypeField) {
 			short type = this.triggerTypeField.getValue();
 			updateTriggerTemplate(type);
 		} else if (field == this.triggerOnField) {
 			onTriggerOnClauseChanged(field);
-		} else if (!this.isAdd) {
-			onFieldChanged(field);
-		}
+		} 
 	}
 
 	@Override
@@ -583,6 +582,15 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 	@Override
 	public void checkCanDropAndRecreate() {
 		sendQueryToBackend("ALTER TRIGGER " + AmiUtils.escapeVarName(triggerNameField.getDefaultValue()) + " AS " + previewScript());	
+	}
+	
+	@Override
+	protected void revertEdit() {
+		if(this.editedFields.contains(triggerTypeField)) {
+			short origtype = this.triggerTypeField.getDefaultValue();
+			updateTriggerTemplate(origtype);
+		}
+		super.revertEdit();
 	}
 
 }
