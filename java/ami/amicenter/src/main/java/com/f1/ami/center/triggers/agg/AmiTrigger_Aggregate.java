@@ -190,7 +190,7 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 		this.targetTable = targetTable;
 		//This is not needed as the trigger has not been dropped yet
 		//db.assertNotLockedByTrigger(this, targetTable.getName());
-		//only do assertNotLockedByTrigger() when the trigger ON clause has changed
+		//only do assertNotLockedByTrigger() when the trigger target table has changed
 		if(checkLockedTable)
 			db.assertNotLockedByTrigger(this, targetTable.getName());
 		this.allowExternalUpdates = binding.getOption(Caster_Boolean.INSTANCE, "allowExternalUpdates", Boolean.FALSE);
