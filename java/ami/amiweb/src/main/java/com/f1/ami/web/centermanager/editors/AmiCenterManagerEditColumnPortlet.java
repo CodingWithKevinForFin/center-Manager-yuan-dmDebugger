@@ -181,8 +181,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		//init table
 		this.columnMetadata = new FastTablePortlet(generateConfig(), new BasicTable(
 				new Class<?>[] { String.class, String.class, String.class, Boolean.class, Boolean.class, Boolean.class, Boolean.class, Boolean.class, Boolean.class, Boolean.class,
-						Boolean.class, String.class, Integer.class },
-				new String[] { "columnName", "dataType", "options", "noNull", "nobroadcast", "enum", "compact", "ascii", "bitmap", "ondisk", "cache", "cacheValue", "position" }),
+						Boolean.class, String.class, Integer.class, String.class},
+				new String[] { "columnName", "dataType", "options", "noNull", "nobroadcast", "enum", "compact", "ascii", "bitmap", "ondisk", "cache", "cacheValue", "position", "dfltVal" }),
 				"Column Configuration");
 		AmiWebFormatterManager fm = service.getFormatterManager();
 		this.columnMetadata.getTable().addColumn(true, "Column Name", "columnName", fm.getBasicFormatter()).setWidth(150);
@@ -200,7 +200,9 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.columnMetadata.getTable().addColumn(true, "OD", "ondisk", fm.getCheckboxWebCellFormatter()).setWidth(30).setJsFormatterType("checkbox");
 		this.columnMetadata.getTable().addColumn(true, "CA", "cache", fm.getCheckboxWebCellFormatter()).setWidth(30).setJsFormatterType("checkbox");
 		this.columnMetadata.getTable().addColumn(true, "Cache Value", "cacheValue", fm.getBasicFormatter()).setWidth(100);
-
+		this.columnMetadata.getTable().addColumn(true, "Default Value", "dfltVal", fm.getBasicFormatter()).setWidth(100);
+		this.columnMetadata.getTable().hideColumn("dfltVal");
+				
 		this.columnMetadata.getTable().addColumn(true, "Position", "position", fm.getIntegerWebCellFormatter());
 		this.columnMetadata.getTable().hideColumn("position");
 		editableColumnIds.put("columnName", new TableEditableColumn("columnName", WebColumnEditConfig.EDIT_TEXTFIELD));
@@ -322,7 +324,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			throw new NullPointerException("Unknown reserved column: " + c);
 		
 		String sql = "ADD " + c + " " + type;
-		Row r = columnMetadata.addRow(reservedName, type, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRow(reservedName, type, null, false, false, false, false, false, false, false, false, null, -1, null);
 		existingColNames.add(reservedName);
 		colNames2rows_Table.put(reservedName, r);
 		onRowInserted(r, sql);
@@ -370,7 +372,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			sql = sql + " AFTER " + curColumns.get(i - 1);
 		else
 			sql = sql + " BEFORE " + curColumns.get(i);
-		Row r = columnMetadata.addRowAt(i, reservedName, type, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRowAt(i, reservedName, type, null, false, false, false, false, false, false, false, false, null, -1, null);
 		existingColNames.add(reservedName);
 		colNames2rows_Table.put(reservedName, r);
 		onRowInserted(r, sql);
@@ -382,7 +384,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		String nextColName = getNextColumnName("new_column");
 		String dfltDataType = "String";
 		String sql = "ADD " + nextColName + " " + dfltDataType;
-		Row r = columnMetadata.addRow(nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRow(nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1, null);
 		existingColNames.add(nextColName);
 		colNames2rows_Table.put(nextColName, r);
 		onRowInserted(r, sql);
@@ -398,7 +400,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 			sql = sql + " AFTER " + curColumns.get(i - 1);
 		else
 			sql = sql + " BEFORE " + curColumns.get(i);
-		Row r = columnMetadata.addRowAt(i, nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1);
+		Row r = columnMetadata.addRowAt(i, nextColName, dfltDataType, null, false, false, false, false, false, false, false, false, null, -1, null);
 		existingColNames.add(nextColName);
 		colNames2rows_Table.put(nextColName, r);
 		onRowInserted(r, sql);
@@ -726,7 +728,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 				String cacheVal = storageOptions.get("Cache") == null ? null : SH.replaceAll(storageOptions.get("Cache"), '"', "");
 				Boolean noNull = (Boolean) r.get("NoNull");
 				Integer position = (Integer) r.get("Position");
-				Row toAdd = columnMetadata.addRow(columnName, dataType, options, noNull, noBroadcast, enm, compact, ascii, bitmap, ondisk, cache, cacheVal, position);
+				Row toAdd = columnMetadata.addRow(columnName, dataType, options, noNull, noBroadcast, enm, compact, ascii, bitmap, ondisk, cache, cacheVal, position, null);
 				colNames2rows_Table.put(columnName, toAdd);
 				existingColNames.add(columnName);
 				Map<String, String> colMap = CH.m(KEY_COLUMN_DATATYPE, dataType, KEY_COLUMN_POS, SH.toString(r.getLocation()), KEY_COLUMN_OPTIONS, options);
@@ -1075,10 +1077,15 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		((FormPortletCheckboxField) this.columnMetaDataEditForm.getForm().getFieldByName("cache")).setValue(cache);
 		((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("cacheValue")).setValue(cacheVal);
 		String colName = (String)row.get("columnName");
+		FormPortletTextField dfltValEditField = ((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal"));
 		if(isNewColumn(colName) && !isReservedColumn(colName)) {
-			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(true);
+			dfltValEditField.setVisible(true);
 		}else
-			((FormPortletTextField) this.columnMetaDataEditForm.getForm().getFieldByName("dfltVal")).setVisible(false);
+			dfltValEditField.setVisible(false);
+		String dfltVal = (String) row.get("dfltVal");
+		dfltValEditField.setValue(dfltVal);
+		if(SH.isnt(dfltVal))
+			AmiCenterManagerUtils.onFieldEdited(dfltValEditField, false);
 		
 		
 	}
@@ -2075,6 +2082,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 	}
 
 	public void applyDefaultValue(String colName, String value) {
+		int rowIdx = curColumns.indexOf(colName);
+		columnMetadata.getTable().getRow(rowIdx).putAt(columnMetadata.getTable().getColumnIds().size() - 1, value);
 		Row logRow = colNames2rows_Log.get(colName);
 		String oldSql = (String) logRow.get("sql");
 		String nuwSql = null;
