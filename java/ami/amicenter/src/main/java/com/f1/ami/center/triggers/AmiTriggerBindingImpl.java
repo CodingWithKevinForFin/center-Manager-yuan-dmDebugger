@@ -117,10 +117,10 @@ public class AmiTriggerBindingImpl implements AmiTriggerBinding {
 		this.trigger.startup(amiImdb, this, sf);
 	}
 	
-	public void test(AmiImdbImpl amiImdb, CalcFrameStack sf) {
+	public void test(AmiImdbImpl amiImdb, CalcFrameStack sf, boolean checkLockedTable) {
 		this.db = amiImdb;
 		this.pool = amiImdb.getState().getStackFramePool();
-		this.trigger.test(amiImdb, this, sf);
+		this.trigger.test(amiImdb, this, sf, checkLockedTable);
 	}
 
 	@Override

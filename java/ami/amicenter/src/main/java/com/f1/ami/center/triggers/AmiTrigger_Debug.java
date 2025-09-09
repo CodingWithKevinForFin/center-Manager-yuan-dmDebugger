@@ -78,7 +78,7 @@ public class AmiTrigger_Debug extends AmiAbstractTrigger {
 	}
 
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		throw new UnsupportedOperationException();
 	}
 }

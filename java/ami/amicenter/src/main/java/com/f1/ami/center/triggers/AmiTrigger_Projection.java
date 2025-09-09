@@ -68,11 +68,11 @@ public class AmiTrigger_Projection extends AmiAbstractTrigger {
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
 		if (this.getBinding().getTableNamesCount() < 2)
 			throw new RuntimeException("UNION trigger must have at least two tables (source table(s) followed by a target table)");
-		test(sf);
+		test(sf, checkLockedTable);
 	}
 	
 	
@@ -152,7 +152,7 @@ public class AmiTrigger_Projection extends AmiAbstractTrigger {
 		}
 	}
 	
-	private void test(CalcFrameStack sf) {
+	private void test(CalcFrameStack sf, boolean checkLockedTable) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
 		final AmiTriggerBinding binding = this.getBinding();
 		final AmiImdbScriptManager sm = db.getScriptManager();
@@ -170,6 +170,8 @@ public class AmiTrigger_Projection extends AmiAbstractTrigger {
 		AmiTableImpl targetTable = (AmiTableImpl) this.getImdb().getAmiTable(this.getBinding().getTableNameAt(sourceTables.length));
 		//Skipping this, since the old trigger has not been dropped yet
 		//db.assertNotLockedByTrigger(this, targetTable.getName());
+		if(checkLockedTable)
+			db.assertNotLockedByTrigger(this, targetTable.getName());
 		NamespaceCalcTypesImpl sourceTypes = new NamespaceCalcTypesImpl();
 		BasicMultiMap.List<Object, String> cols2sourceTables = new BasicMultiMap.List<Object, String>();
 		for (AmiTableImpl table : sourceTables) {

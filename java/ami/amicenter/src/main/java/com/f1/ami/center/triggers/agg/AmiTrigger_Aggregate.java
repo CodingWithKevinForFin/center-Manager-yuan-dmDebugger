@@ -92,11 +92,11 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
 		if (this.getBinding().getTableNamesCount() < 2)
 			throw new RuntimeException("UNION trigger must have at least two tables (source table(s) followed by a target table)");
-		test(sf);
+		test(sf, checkLockedTable);
 	}
 
 	@Override
@@ -104,7 +104,7 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 		rebuildTargetTable(sf);
 	}
 	
-	private void test(CalcFrameStack sf) {
+	private void test(CalcFrameStack sf, boolean checkLockedTable) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
 		final AmiTriggerBinding binding = this.getBinding();
 		final AmiTableImpl sourceTable = db.getAmiTable(binding.getTableNameAt(0));
@@ -190,6 +190,9 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 		this.targetTable = targetTable;
 		//This is not needed as the trigger has not been dropped yet
 		//db.assertNotLockedByTrigger(this, targetTable.getName());
+		//only do assertNotLockedByTrigger() when the trigger ON clause has changed
+		if(checkLockedTable)
+			db.assertNotLockedByTrigger(this, targetTable.getName());
 		this.allowExternalUpdates = binding.getOption(Caster_Boolean.INSTANCE, "allowExternalUpdates", Boolean.FALSE);
 		this.lockedTables = allowExternalUpdates ? Collections.EMPTY_SET : Collections.singleton(this.targetTable.getName());
 		this.sourceTable = sourceTable;

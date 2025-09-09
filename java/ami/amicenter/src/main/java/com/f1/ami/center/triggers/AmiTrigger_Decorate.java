@@ -70,12 +70,12 @@ public class AmiTrigger_Decorate extends AmiAbstractTrigger {
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
-		test(sf);
+		test(sf, checkLockedTable);
 	}
 	
-	private void test(CalcFrameStack sf) {
+	private void test(CalcFrameStack sf, boolean checkLockedTable) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
 		final AmiTriggerBinding binding = this.getBinding();
 		final AmiImdbScriptManager sm = db.getScriptManager();
@@ -85,6 +85,8 @@ public class AmiTrigger_Decorate extends AmiAbstractTrigger {
 		this.tgtTable = db.getAmiTable(binding.getTableNameAt(1));
 		//This is not needed as the trigger has not been dropped yet
 		//db.assertNotLockedByTrigger(this, tgtTable.getName());
+		if(checkLockedTable)
+			db.assertNotLockedByTrigger(this, tgtTable.getName());
 		NamespaceCalcTypesImpl variables = new NamespaceCalcTypesImpl();
 		com.f1.utils.structs.table.stack.BasicCalcTypes tgtVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
 		com.f1.utils.structs.table.stack.BasicCalcTypes srcVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();

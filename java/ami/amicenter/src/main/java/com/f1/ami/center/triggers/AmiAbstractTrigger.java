@@ -24,15 +24,15 @@ public abstract class AmiAbstractTrigger implements AmiTrigger {
 	}
 	
 	@Override
-	final public void test(AmiImdb imdb, AmiTriggerBinding binding, CalcFrameStack sf) {
+	final public void test(AmiImdb imdb, AmiTriggerBinding binding, CalcFrameStack sf, boolean checkLockedTable) {
 		this.imdb = (AmiImdbImpl) imdb;
 		this.binding = binding;
-		onTest(sf);
+		onTest(sf, checkLockedTable);
 	}
 
 	abstract protected void onStartup(CalcFrameStack sf);
 	
-	abstract protected void onTest(CalcFrameStack sf);
+	abstract protected void onTest(CalcFrameStack sf, boolean checkLockedTable);
 
 	@Override
 	public boolean onUpdating(AmiTable table, AmiRow row, AmiPreparedRow updatingTo, CalcFrameStack sf) {

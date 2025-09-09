@@ -99,7 +99,7 @@ public class AmiTrigger_AmiScript extends AmiAbstractTrigger {
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		onStartup(sf);
 	}
 

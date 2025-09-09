@@ -95,7 +95,7 @@ public class AmiTrigger_Relay extends AmiAbstractTrigger implements AmiImdbFlush
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
 		AmiImdbImpl t = (AmiImdbImpl) this.getImdb();
 		this.om = t.getObjectsManager();
@@ -113,10 +113,10 @@ public class AmiTrigger_Relay extends AmiAbstractTrigger implements AmiImdbFlush
 //			client.start(host, port, login, options, new File(file), pass2);
 //		} else
 //			client.start(host, port, login, options);
-		test(sf);	
+		test(sf, checkLockedTable);	
 	}
 	
-	private void test(CalcFrameStack cfs) {
+	private void test(CalcFrameStack cfs, boolean checkLockedTable) {
 		final AmiImdbImpl db = (AmiImdbImpl) this.getImdb();
 		final AmiTriggerBinding binding = this.getBinding();
 		final AmiImdbScriptManager sm = db.getScriptManager();

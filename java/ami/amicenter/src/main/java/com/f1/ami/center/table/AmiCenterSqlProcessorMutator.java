@@ -3208,8 +3208,50 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 		AmiTrigger trigger = factory.newTrigger();
 
 		AmiTriggerBindingImpl nuw_tb = new AmiTriggerBindingImpl(triggerName, trigger, newPriority, newTableNames, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
+		//check if the trigger type, trigger on has changed
+		// because if the on has changed, we may need to check locked tables for the new target table
+		boolean checkLockedTable = false;
+		AmiTrigger oldTrigger = session.getObjectsManager().getAmiTrigger(triggerName);
+		String oldTypeName = oldTrigger.getBinding().getTriggerType();
+		if(!SH.equals(oldTypeName, newTypeName))
+			checkLockedTable = true;
+		else {
+			String oldTargetTable = null;
+			String nuwTargetTable = null;
+			switch(newTypeName) {	
+				case "AGGREGATE":
+					oldTargetTable = oldTrigger.getBinding().getTableNameAt(1);
+					nuwTargetTable = newTableNames[1];
+					if(!SH.equals(oldTargetTable, nuwTargetTable))
+						checkLockedTable = true;
+					break;
+				case "DECORATE":
+					oldTargetTable = oldTrigger.getBinding().getTableNameAt(1);
+					nuwTargetTable = newTableNames[1];
+					if(!SH.equals(oldTargetTable, nuwTargetTable))
+						checkLockedTable = true;
+					break;
+				case "JOIN":
+					oldTargetTable = oldTrigger.getBinding().getTableNameAt(2);
+					nuwTargetTable = newTableNames[2];
+					if(!SH.equals(oldTargetTable, nuwTargetTable))
+						checkLockedTable = true;
+					break;
+				case "PROJECTION":
+					int tableNamesCnt = oldTrigger.getBinding().getTableNamesCount();
+					oldTargetTable = oldTrigger.getBinding().getTableNameAt(tableNamesCnt - 1);
+					nuwTargetTable = newTableNames[newTableNames.length - 1];
+					if(!SH.equals(oldTargetTable, nuwTargetTable))
+						checkLockedTable = true;
+					break;
+				case "AMISCRIPT":
+				case "RELAY":
+					break;
+			}
+		}
+		System.out.println("need to check locked table on new target table: " + checkLockedTable);
 		try {
-			nuw_tb.test(session.getImdb(), sf);
+			nuw_tb.test(session.getImdb(), sf, checkLockedTable);
 		} catch (Exception e) {
 			success = false;
 			errMsg = e.getMessage();

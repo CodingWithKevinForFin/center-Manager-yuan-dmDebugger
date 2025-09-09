@@ -86,12 +86,12 @@ public class AmiTrigger_Join extends AmiAbstractTrigger {
 	}
 	
 	@Override
-	protected void onTest(CalcFrameStack sf) {
+	protected void onTest(CalcFrameStack sf, boolean checkLockedTable) {
 		this.stackFramePool = getImdb().getState().getStackFramePool();
-		test(sf);	
+		test(sf, checkLockedTable);	
 	}
 	
-	protected void test(CalcTypesStack cfs) {
+	protected void test(CalcTypesStack cfs, boolean checkLockedTable) {
 		if (this.getBinding().getTableNamesCount() != 3)
 			throw new RuntimeException("JOIN trigger must be on exactly three tables (left table, right table)");
 
@@ -106,7 +106,8 @@ public class AmiTrigger_Join extends AmiAbstractTrigger {
 		AmiTableImpl targetTable = db.getAmiTable(binding.getTableNameAt(2));
 		//This is not needed as the trigger has not been dropped yet
 		//db.assertNotLockedByTrigger(this, targetTable.getName());
-
+		if(checkLockedTable)
+			db.assertNotLockedByTrigger(this, targetTable.getName());
 		NamespaceCalcTypesImpl variables = new NamespaceCalcTypesImpl();
 		com.f1.utils.structs.table.stack.BasicCalcTypes leftVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
 		com.f1.utils.structs.table.stack.BasicCalcTypes rghtVars = new com.f1.utils.structs.table.stack.BasicCalcTypes();
