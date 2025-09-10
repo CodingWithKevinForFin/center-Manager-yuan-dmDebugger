@@ -3149,9 +3149,20 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 		result.setAB(success, errMsg);
 		AmiImdbSession session = AmiCenterUtils.getSession(sf);
 		session.assertCanAlter();
-		if (session.getObjectsManager().getAmiTrigger(triggerName) == null) 
-			throw new ExpressionParserException(triggerNamePos, "Trigger does not exist:" + triggerName);
-		
+		if (session.getObjectsManager().getAmiTrigger(triggerName) == null) {
+			Exception e =  new ExpressionParserException(triggerNamePos, "Trigger does not exist:" + triggerName);
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+			//throw new ExpressionParserException(triggerNamePos, "Trigger does not exist:" + triggerName);
+		}
+		if (session.getObjectsManager().getAmiTrigger(newTriggerName) != null) {
+			Exception e = new ExpressionParserException(newTriggerNamePos, "Trigger already exists: " + newTriggerName);
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+			//throw new ExpressionParserException(triggerNamePos, "Trigger already exists: " + triggerName);
+		}
 		if (AmiUtils.isResevedTableName(newTriggerName)) {
 			Exception e = new ExpressionParserException(newTriggerNamePos, "Security Violation: Trigger name is reserved: " + newTriggerName);
 			success = false;
@@ -3207,7 +3218,7 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 		Map<String, Object> newUseOptionsMap = AmiUtils.processOptions(newTypeNamePos, newUseOptions, factory, this.getParser(), sf, true);
 		AmiTrigger trigger = factory.newTrigger();
 
-		AmiTriggerBindingImpl nuw_tb = new AmiTriggerBindingImpl(triggerName, trigger, newPriority, newTableNames, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
+		AmiTriggerBindingImpl nuw_tb = new AmiTriggerBindingImpl(newTriggerName, trigger, newPriority, newTableNames, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
 		//check if the trigger type, trigger on has changed
 		// because if the on has changed, we may need to check locked tables for the new target table
 		boolean checkLockedTable = false;
