@@ -88,4 +88,8 @@ public interface SqlProcessorTableMutator {
 	
 	public Tuple2<Boolean, String> processTriggerAlterCheck(CalcFrameStack sf, String triggerName, int triggerNamePos, String newTriggerName, int newTriggerNamePos, String newTypeName, int newTypeNamePos, String newTableNames[], int newTableNamesPos[],
 			int newPriority, Map<String, Node> newUseOptions);
+	public Tuple2<Boolean, String> processProcedureAlterCheck(CalcFrameStack sf, String procedureName, int position, String newProcedureName, int newProcedureNamePos,
+			String newTypeName, int newTypeNamePos, Map<String, Node> newUseOptions);
+	public Tuple2<Boolean, String> processTimerAlterCheck(CalcFrameStack sf, String timerName, int position, String newTimerName, int newTimerNamePos, String newTypeName,
+			int newTypeNamePos, int newPriority, String newOn, int newOnPos, Map<String, Node> newUseOptions);
 }

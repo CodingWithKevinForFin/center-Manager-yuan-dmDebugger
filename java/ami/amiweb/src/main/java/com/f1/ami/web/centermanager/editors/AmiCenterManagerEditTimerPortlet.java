@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
 
+import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.customobjects.AmiScriptClassPluginWrapper;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsResponse;
@@ -17,6 +18,7 @@ import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
 import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Timer;
+import com.f1.ami.web.centermanager.portlets.AmiCenterManagerReviewApplyScriptPortlet;
 import com.f1.base.Action;
 import com.f1.base.Row;
 import com.f1.base.Table;
@@ -461,6 +463,13 @@ public class AmiCenterManagerEditTimerPortlet extends AmiCenterManagerAbstractEd
 						}
 
 					}
+				} else if(query.startsWith("ALTER TIMER")) {
+					Row r = t.getRow(0);
+					boolean canDropAndRecreate = (boolean) r.get("Success");
+					if(canDropAndRecreate)
+						getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, previewEdit()), 1000, 750);
+					else
+						AmiCenterManagerUtils.popDialog(service, (String) r.get("Exception"), "Error Editing Trigger");
 				} else {
 					for (Row r : t.getRows()) {
 						String methodName = (String) r.get("ProcedureName");
@@ -517,8 +526,16 @@ public class AmiCenterManagerEditTimerPortlet extends AmiCenterManagerAbstractEd
 
 	@Override
 	public String previewEdit() {
-		// TODO Auto-generated method stub
-		return null;
+		StringBuilder sb = new StringBuilder();
+		String origName = nameField.getDefaultValue();
+		String curName = nameField.getValue();
+		//first check if the name has changed, and if the only thing that has changed is name 
+		if(!SH.equals(origName, curName) && editedFields.size() == 1) {
+			sb.append("RENAME TIMER ").append(AmiUtils.escapeVarName(origName)).append(" TO ").append(AmiUtils.escapeVarName(curName));
+		}else {
+			sb.append("DROP TIMER ").append(origName).append(";\n").append(previewScript());
+		}
+		return sb.toString();
 	}
 
 	@Override
@@ -527,14 +544,16 @@ public class AmiCenterManagerEditTimerPortlet extends AmiCenterManagerAbstractEd
 			AmiCenterManagerUtils.popDialog(service, "The timer name field cannot be empty", "Error Applying Changes");
 			return false;
 		}
+		if(this.editedFields.isEmpty()) {
+			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
+			return false;
+		}
 		return true;
-		
 	}
 	
 	@Override
 	public void checkCanDropAndRecreate() {
-		
-		
+		sendQueryToBackend("ALTER TIMER " + AmiUtils.escapeVarName(nameField.getDefaultValue()) + " AS " + previewScript());	
 	}
 
 }

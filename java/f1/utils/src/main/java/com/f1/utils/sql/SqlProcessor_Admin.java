@@ -610,5 +610,92 @@ public class SqlProcessor_Admin {
 		}
 		return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
 	}
-
+	
+	protected TableReturn processAlterProcedure(CalcFrameStack sf, AdminNode node) {
+		MethodNode singletonMethod = JavaExpressionParser.castNode(node.getNext(), MethodNode.class);
+		AdminNode newProcedure = (AdminNode) singletonMethod.getParamAt(0);
+		
+		ArrayList<Column> colsDef = new ArrayList<Column>();
+		colsDef.add(new BasicColumn(Boolean.class, "Success"));
+		colsDef.add(new BasicColumn(String.class, "Exception"));
+		Table result = new ColumnarTable(colsDef);
+		result.setTitle("Alter Procedure Check");
+		Row r = result.newEmptyRow();
+		result.getRows().add(r);
+		
+		SqlOperationNode newProcedureNode = JavaExpressionParser.castNode(newProcedure.getNext(), SqlOperationNode.class);
+		SqlOperationNode newTypeNode = JavaExpressionParser.castNode(newProcedureNode.getNext(), SqlOperationNode.class);
+		Map<String, Node> newUseOptions = newProcedure.getUseNode() != null ? newProcedure.getUseNode().getOptionsMap() : Collections.EMPTY_MAP;
+		String newProcedureName = newProcedureNode.getNameAsString();
+		int newProcedureNamePos = newProcedureNode.getPosition();
+		String newTypeName = newTypeNode.getNameAsString();
+		int newTypeNamePos = newTypeNode.getPosition();
+		Tuple2<Boolean, String> res = this.owner.getMutator().processProcedureAlterCheck(sf, singletonMethod.getMethodName(), singletonMethod.getPosition(), newProcedureName, newProcedureNamePos, newTypeName, newTypeNamePos, newUseOptions);
+		
+		boolean isNewProcedureLegal = res.getA();
+		
+		if(isNewProcedureLegal)
+			r.put("Success", true);
+		else {
+			r.put("Success", false);
+			r.put("Exception", res.getB());
+		}
+		return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
+		
+		
+		
+	}
+	
+	protected TableReturn processAlterTimer(CalcFrameStack sf, AdminNode node) {
+		MethodNode singletonTimer = JavaExpressionParser.castNode(node.getNext(), MethodNode.class);
+		AdminNode newTimer = (AdminNode) singletonTimer.getParamAt(0);
+		
+		ArrayList<Column> colsDef = new ArrayList<Column>();
+		colsDef.add(new BasicColumn(Boolean.class, "Success"));
+		colsDef.add(new BasicColumn(String.class, "Exception"));
+		Table result = new ColumnarTable(colsDef);
+		result.setTitle("Alter Procedure Check");
+		Row r = result.newEmptyRow();
+		result.getRows().add(r);
+		
+		
+		SqlOperationNode timerNode = JavaExpressionParser.castNode(newTimer.getNext(), SqlOperationNode.class);
+		SqlOperationNode typeNode = JavaExpressionParser.castNode(timerNode.getNext(), SqlOperationNode.class);
+		SqlOperationNode onNode = JavaExpressionParser.castNode(typeNode.getNext(), SqlOperationNode.class);
+		SqlOperationNode priorityNode = onNode.getNext() == null ? null : JavaExpressionParser.castNode(onNode.getNext(), SqlOperationNode.class);
+		
+		int newPriority;
+		try {
+			newPriority = priorityNode == null ? 0 : ((Number) SH.parseConstant(priorityNode.getNameAsString())).intValue();
+		} catch (Exception e) {
+			r.put("Success", false);
+			r.put("Exception",  "Priority is Not a valid number: " + priorityNode.getNameAsString());
+			return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
+			//throw new ExpressionParserException(newPriorityNode.getPosition(), "Not a valid number: " + newPriorityNode.getNameAsString(), e);
+		}
+		
+		
+		
+		Map<String, Node> newUseOptions = newTimer.getUseNode() != null ? newTimer.getUseNode().getOptionsMap() : Collections.EMPTY_MAP;
+		String newTimerName = timerNode.getNameAsString();
+		int newTimerNamePos = timerNode.getPosition();
+		String newTypeName = typeNode.getNameAsString();
+		int newTypeNamePos = typeNode.getPosition();
+		String newOn = onNode.getNameAsString();
+		
+		int newOnPos = onNode.getPosition();
+		Tuple2<Boolean, String> res = this.owner.getMutator().processTimerAlterCheck(sf, singletonTimer.getMethodName(), singletonTimer.getPosition(), newTimerName, newTimerNamePos, newTypeName, newTypeNamePos, newPriority, newOn, newOnPos, newUseOptions);		
+		boolean isNewTimerLegal = res.getA();
+		
+		if(isNewTimerLegal)
+			r.put("Success", true);
+		else {
+			r.put("Success", false);
+			r.put("Exception", res.getB());
+		}
+		return new TableReturn(CH.l(result), 0, Boolean.class, Boolean.TRUE);
+		
+		
+	}
+	
 }

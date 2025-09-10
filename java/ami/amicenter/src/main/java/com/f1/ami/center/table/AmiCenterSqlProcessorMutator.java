@@ -3156,7 +3156,7 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 			return new Tuple2<Boolean, String>(success, errMsg);
 			//throw new ExpressionParserException(triggerNamePos, "Trigger does not exist:" + triggerName);
 		}
-		if (session.getObjectsManager().getAmiTrigger(newTriggerName) != null) {
+		if (!SH.equals(triggerName, newTriggerName) && session.getObjectsManager().getAmiTrigger(newTriggerName) != null) {
 			Exception e = new ExpressionParserException(newTriggerNamePos, "Trigger already exists: " + newTriggerName);
 			success = false;
 			errMsg = e.getMessage();
@@ -3273,6 +3273,119 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 //				throw new ExpressionParserException(triggerNamePos, "For " + nuw_tb.getTriggerType() + ": Invalid trigger configuration", e);
 		}
 		
+		return result;
+	}
+
+	@Override
+	public Tuple2<Boolean, String> processProcedureAlterCheck(CalcFrameStack sf, String procedureName, int position, String newProcedureName, int newProcedureNamePos,
+			String newTypeName, int newTypeNamePos, Map<String, Node> newUseOptions) {
+		Tuple2<Boolean, String> result = new Tuple2<Boolean, String>();
+		Boolean success = true;
+		String errMsg = null;
+		result.setAB(success, errMsg);		
+		
+		AmiImdbSession session = AmiCenterUtils.getSession(sf);
+		session.assertCanAlter();
+		newTypeName = newTypeName.toUpperCase();
+		if (AmiUtils.isResevedTableName(newProcedureName)) {
+			Exception e = new ExpressionParserException(newProcedureNamePos, "Security Violation: Procedure name is reserved: " + newProcedureName);
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		if (!SH.equals(procedureName, newProcedureName) && session.getImdb().getAmiStoredProc(newProcedureName) != null) {
+			Exception e = new ExpressionParserException(newProcedureNamePos, "Procedure already exists: " + newProcedureName);
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		AmiStoredProcFactory factory = session.getImdb().getStoredProcFactory(newTypeName);
+		if (factory == null) {
+			Exception e = new ExpressionParserException(newTypeNamePos, "Invalid procedure type '" + newTypeName + "' , existing procedure types: " + session.getImdb().getStoredProcTypes());
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		if (session.getImdb().getAmiStoredProc(procedureName) == null) {
+			Exception e = new ExpressionParserException(position, "Procedure does not exist: " + procedureName);
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+	
+		Map<String, Object> newUseOptionsMap = AmiUtils.processOptions(newTypeNamePos, newUseOptions, factory, this.getParser(), sf, true);
+		AmiStoredProc sp = factory.newStoredProc();
+		AmiStoredProcBindingImpl nuw_spb;
+		try {
+			nuw_spb = new AmiStoredProcBindingImpl(session.getImdb(), newProcedureName, sp, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
+			session.getObjectsManager().testAmiStoredProcBinding(nuw_spb, sf);
+		} catch (Exception e) {
+			Exception ex = new ExpressionParserException(newTypeNamePos, "Procedure Definition failed: " + e.getMessage(), e);
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		return result;
+	}
+
+	@Override
+	public Tuple2<Boolean, String> processTimerAlterCheck(CalcFrameStack sf, String timerName, int position, String newTimerName, int newTimerNamePos, String newTypeName,
+			int newTypeNamePos, int newPriority, String newOn, int newOnPos, Map<String, Node> newUseOptions) {
+		Tuple2<Boolean, String> result = new Tuple2<Boolean, String>();
+		Boolean success = true;
+		String errMsg = null;
+		result.setAB(success, errMsg);		
+		
+		AmiImdbSession session = AmiCenterUtils.getSession(sf);
+		session.assertCanAlter();
+		if (AmiUtils.isResevedTableName(newTimerName)) {
+			Exception ex = new ExpressionParserException(newTimerNamePos, "Security Violation: Timer name is reserved: " + newTimerName);
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+			
+		newTypeName = newTypeName.toUpperCase();
+		AmiTimerFactory factory = session.getImdb().getTimerFactory(newTypeName);
+		if (factory == null) {
+			Exception ex = new ExpressionParserException(newTypeNamePos, "Invalid timer type '" + newTypeName + "' , existing trigger types: " + session.getImdb().getTimerTypes());
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+			
+		if (session.getImdb().getAmiTimer(timerName) == null) {
+			Exception ex = new ExpressionParserException(newTypeNamePos, "Timer doesn't exists: " + timerName);
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		if (!SH.equals(timerName, newTimerName) && session.getImdb().getAmiTimer(newTimerName) != null) {
+			Exception ex = new ExpressionParserException(newTimerNamePos, "Timer already exists: " + newTimerName);
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}
+		
+		// TODO:
+		Map<String, Object> newUseOptionsMap = AmiUtils.processOptions(newTypeNamePos, newUseOptions, factory, this.getParser(), sf, true);
+		AmiTimer timer = factory.newTimer();
+		AmiTimerBindingImpl nuw_tm;
+		try {
+			nuw_tm = new AmiTimerBindingImpl(timerName, timer, newPriority, newOn, newTypeName, newUseOptionsMap, toStringMap2(newUseOptionsMap), getDefinedBy(sf));
+		} catch (Exception e) {
+			Exception ex = new ExpressionParserException(newOnPos, "Timer Definition failed: " + e.getMessage(), e);
+			success = false;
+			errMsg = ex.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}	
+		try {
+			session.getObjectsManager().testAmiTimerBinding(nuw_tm, sf);
+		}catch (Exception e) {
+			success = false;
+			errMsg = e.getMessage();
+			return new Tuple2<Boolean, String>(success, errMsg);
+		}	
 		return result;
 	}
 

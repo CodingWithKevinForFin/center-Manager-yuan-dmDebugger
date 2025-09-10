@@ -548,7 +548,7 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 		if(!SH.equals(origName, curName) && editedFields.size() == 1) {
 			sb.append("RENAME TRIGGER ").append(AmiUtils.escapeVarName(origName)).append(" TO ").append(AmiUtils.escapeVarName(curName));
 		}else {
-			sb.append("DROP TRIGGER ").append(origName).append(';').append(previewScript());
+			sb.append("DROP TRIGGER ").append(origName).append(";\n").append(previewScript());
 		}
 		return sb.toString();
 	}

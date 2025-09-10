@@ -151,6 +151,10 @@ public class SqlProcessor implements Lockable {
 						return null;
 					} else if(an.getTargetType() == SqlExpressionParser.ID_TRIGGER) {	
 						return adminProcessor.processAlterTrigger(sf, an);
+					} else if(an.getTargetType() == SqlExpressionParser.ID_TIMER) {	
+						return adminProcessor.processAlterTimer(sf, an);
+					} else if(an.getTargetType() == SqlExpressionParser.ID_PROCEDURE) {	
+						return adminProcessor.processAlterProcedure(sf, an);
 					} else {
 						adminProcessor.processAlterUse(sf, an);
 						return null;

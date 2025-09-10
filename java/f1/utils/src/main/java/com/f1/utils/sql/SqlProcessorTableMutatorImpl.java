@@ -733,6 +733,18 @@ public class SqlProcessorTableMutatorImpl implements SqlProcessorTableMutator {
 
 	}
 
+	@Override
+	public Tuple2<Boolean, String> processProcedureAlterCheck(CalcFrameStack sf, String procedureName, int procedureNamePosition, String newProcedureName, int newProcedureNamePos,
+			String newTypeName, int newTypeNamePos, Map<String, Node> newUseOptions) {
+		throw new ExpressionParserException(procedureNamePosition, "ALTER PROCEDURE not supported");
+	}
+
+	@Override
+	public Tuple2<Boolean, String> processTimerAlterCheck(CalcFrameStack sf, String timerName, int triggerNamePos, String newTimerName, int newTimerNamePos, String newTypeName,
+			int newTypeNamePos, int newPriority, String newOn, int newOnPos, Map<String, Node> newUseOptions) {
+		throw new ExpressionParserException(triggerNamePos, "ALTER TIMER not supported");	
+	}
+
 	
 
 }

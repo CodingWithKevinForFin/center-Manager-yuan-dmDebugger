@@ -343,6 +343,12 @@ public class AmiImdbObjectsManager {
 		CH.putOrThrow(amiTimersByName, timer.getTimerName(), timer.getTimer());
 		onSchemaChanged(sf);
 	}
+	
+	public void testAmiTimerBinding(AmiTimerBindingImpl timer, CalcFrameStack sf) {
+		if (this.startupComplete) {
+			timer.startup(this.db, sf);
+		}
+	}
 
 	public AmiTimerBindingImpl removeAmiTimer(String timerName, CalcFrameStack sf) {
 		AmiTimerBindingImpl timer = CH.removeOrThrow(amiTimerBindingsByName, timerName);
@@ -445,6 +451,11 @@ public class AmiImdbObjectsManager {
 		CH.putOrThrow(amiStoredProcBindingsByName, storedProc.getStoredProcName(), storedProc);
 		CH.putOrThrow(amiStoredProcsByName, storedProc.getStoredProcName(), storedProc.getStoredProc());
 		onSchemaChanged(sf);
+	}
+	
+	public void testAmiStoredProcBinding(AmiStoredProcBindingImpl storedProc, CalcFrameStack sf) {
+		if (this.startupComplete)
+			storedProc.startup(this.db, sf);
 	}
 
 	public AmiStoredProcBindingImpl removeAmiStoredProc(String storedProcName, CalcFrameStack sf) {

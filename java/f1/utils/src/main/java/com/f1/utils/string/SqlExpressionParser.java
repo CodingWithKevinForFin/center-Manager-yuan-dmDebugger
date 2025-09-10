@@ -1854,7 +1854,7 @@ public class SqlExpressionParser extends JavaExpressionParser {
 			sws(c);
 		} else
 			options = null;
-		if (type != ID_TABLE && type != ID_DBO && type != ID_TRIGGER)
+		if (type != ID_TABLE && type != ID_DBO && type != ID_TRIGGER && type != ID_TIMER && type != ID_PROCEDURE)
 			throw new ExpressionParserException(pos, "expecting: DBO or TABLE");
 		VariableNode next = parseVariableNode(c, buf);
 		sws(c);
@@ -1863,6 +1863,14 @@ public class SqlExpressionParser extends JavaExpressionParser {
 			Node newTrigger = parseAlterTrigger(c);
 			List<Node> newSingletonTrigger = CH.l(newTrigger);
 			return new AdminNode(position, ID_ALTER, ID_TRIGGER, new MethodNode(position, next.toString(), newSingletonTrigger), null, options);
+		} else if(type == ID_PROCEDURE) {
+			Node newProcedure = parseAlterProcedure(c);
+			List<Node> newSingletonProcedure = CH.l(newProcedure);
+			return new AdminNode(position, ID_ALTER, ID_PROCEDURE, new MethodNode(position, next.toString(), newSingletonProcedure), null, options);
+		} else if(type == ID_TIMER) {
+			Node newTimer = parseAlterTimer(c);
+			List<Node> newSingletonTimer = CH.l(newTimer);
+			return new AdminNode(position, ID_ALTER, ID_TIMER, new MethodNode(position, next.toString(), newSingletonTimer), null, options);
 		}
 		List<Node> updates = parseAlterColumns(c);
 		return new AdminNode(position, ID_ALTER, type, new MethodNode(position, next.toString(), updates), null, options);
@@ -1882,6 +1890,32 @@ public class SqlExpressionParser extends JavaExpressionParser {
 		return newTrigger;
 	}
 	
+	//returns the new trigger AdminNode
+		private AdminNode parseAlterProcedure(CharReader c){
+			expectKeywordId(c, ID_AS);
+			sws(c);
+			expectKeywordId(c, ID_CREATE);
+			sws(c);
+			expectKeywordId(c, ID_PROCEDURE);
+			sws(c);
+			int pos = c.getCountRead();
+			AdminNode newProcedure = parseCreateProcedure(pos, c);
+			return newProcedure;
+		}
+		
+		//returns the new trigger AdminNode
+		private AdminNode parseAlterTimer(CharReader c){
+			expectKeywordId(c, ID_AS);
+			sws(c);
+			expectKeywordId(c, ID_CREATE);
+			sws(c);
+			expectKeywordId(c, ID_TIMER);
+			sws(c);
+			int pos = c.getCountRead();
+			AdminNode newTimer = parseCreateTimer(pos, c);
+			return newTimer;
+		}
+		
 	private List<Node> parseAlterColumns(CharReader c) {
 		final List<Node> parts = new ArrayList<Node>();
 		int usePosition = -1;
