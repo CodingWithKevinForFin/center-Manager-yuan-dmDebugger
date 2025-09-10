@@ -92,7 +92,7 @@ public class AmiCenterManagerEditTimerPortlet extends AmiCenterManagerAbstractEd
 		this.timerTypeField.addOption(AmiCenterEntityConsts.TIMER_TYPE_CODE_AMISCRIPT, AmiCenterEntityConsts.TIMER_TYPE_AMISCRIPT);
 		this.timerTypeField.setLeftPosPx(DEFAULT_LEFTPOS + NAME_WIDTH + (DEFAULT_X_SPACING - 20)).setTopPosPx(DEFAULT_TOPPOS).setHeightPx(DEFAULT_ROWHEIGHT).setWidthPx(100);
 
-		this.timerOnField = this.form.addField(new FormPortletTextField(AmiCenterManagerUtils.formatRequiredField("ON")));
+		this.timerOnField = this.form.addField(new FormPortletTextField("ON"));
 		//this.timerOnField.setId("on");
 		FIELDS_BY_NAME.put("on", this.timerOnField);
 		this.timerOnField.setHelp("either:<br>" + "<ul><li>(1). A positive number defining the period in milliseconds between timer executions.</li>"
