@@ -70,8 +70,10 @@ import com.f1.suite.web.tree.impl.FastWebTreeColumn;
 import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.IdentityHashSet;
+import com.f1.utils.string.JavaExpressionParser;
 import com.f1.utils.string.SqlExpressionParser;
 import com.f1.utils.string.node.ArrayNode;
+import com.f1.utils.string.node.MethodNode;
 import com.f1.utils.string.sqlnode.AdminNode;
 import com.f1.utils.string.sqlnode.SqlOperationNode;
 import com.f1.utils.structs.LongKeyMap;
@@ -626,7 +628,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				AmiCenterManagerUtils.popDialog(service, "CANNOT edit a read-only object", "EDIT FAIL");
 				return;
 			}
-			String query = "DESCRIBE INDEX " + tableNamePlusIndexName[1] + " ON " + tableNamePlusIndexName[0];
+			String query = "DESCRIBE INDEX " + AmiUtils.escapeVarName(tableNamePlusIndexName[1]) + " ON " + AmiUtils.escapeVarName(tableNamePlusIndexName[0]) + ";" + "DESCRIBE TABLE " + AmiUtils.escapeVarName(tableNamePlusIndexName[0]);
 			prepareRequestToBackend(query);
 		} else if ("delete_index".equals(action)) {
 			StringBuilder query = new StringBuilder();
@@ -750,7 +752,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				AmiCenterManagerUtils.popDialog(service, "CANNOT edit a read-only object", "EDIT FAIL");
 				return;
 			}
-			String query = "DESCRIBE INDEX " + AmiUtils.escapeVarName(tableNamePlusIndexName[1]) + " ON " +  AmiUtils.escapeVarName(tableNamePlusIndexName[0]);
+			String query = "DESCRIBE INDEX " + AmiUtils.escapeVarName(tableNamePlusIndexName[1]) + " ON " + AmiUtils.escapeVarName(tableNamePlusIndexName[0]) + ";" + "DESCRIBE TABLE " + AmiUtils.escapeVarName(tableNamePlusIndexName[0]);
 			prepareRequestToBackend(query);
 		} else if ("delete_index".equals(action)) {
 			StringBuilder query = new StringBuilder();
@@ -1028,7 +1030,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 
 					}
 
-				} else if (query.contains("DESCRIBE")) {
+				} else if (tables.size() == 1 && query.contains("DESCRIBE")) {
 					//describe [entity] [entity_name]
 					
 					SqlExpressionParser sep = new SqlExpressionParser();
@@ -1073,16 +1075,28 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 							//TODO:
 							//manager.showDialog("Edit Method", new AmiCenterManagerAddMethodPortlet(manager.generateConfig(), methodConfig, AmiCenterEntityConsts.EDIT), 500, 550);
 							break;
-						case SqlExpressionParser.ID_INDEX:
-							String indexScript = Caster_String.INSTANCE.cast(r.get("SQL"));
-							n = AmiCenterManagerUtils.scriptToAdminNode(indexScript);
-							Map<String, String> indexConfig = AmiCenterManagerUtils.parseAdminNode_Index(n);
-							//manager.showDialog("Edit Method", new AmiCenterManagerAddMethodPortlet(manager.generateConfig(), indexConfig, AmiCenterEntityConsts.EDIT), 500, 550);
-							break;
+//						case SqlExpressionParser.ID_INDEX:
+//							String indexScript = Caster_String.INSTANCE.cast(r.get("SQL"));
+//							String tableName = JavaExpressionParser.castNode(son.getNext(), SqlOperationNode.class).getNameAsString();
+//							n = AmiCenterManagerUtils.scriptToAdminNode(indexScript);
+//							Map<String, String> indexConfig = AmiCenterManagerUtils.parseAdminNode_Index(n);
+//							//manager.showDialog("Edit Method", new AmiCenterManagerAddMethodPortlet(manager.generateConfig(), indexConfig, AmiCenterEntityConsts.EDIT), 500, 550);
+//							break;
 						case SqlExpressionParser.ID_DBO:
 							break;
 					}
 
+				} else if(tables.size() == 2 && query.contains("DESCRIBE TABLE") && query.contains("DESCRIBE INDEX")) {
+					String indexSql = (String) tables.get(0).getRow(0).get("SQL");
+					String tableSql = (String) tables.get(1).getRow(0).get("SQL");
+					JavaExpressionParser.castNode(AmiCenterManagerUtils.scriptToAdminNode(indexSql).getNext(), SqlOperationNode.class).getNameAsString();
+					AdminNode createIndexNode = AmiCenterManagerUtils.scriptToAdminNode(indexSql);
+					SqlOperationNode opNode = JavaExpressionParser.castNode(createIndexNode.getNext(), SqlOperationNode.class);
+					MethodNode methodNode =  JavaExpressionParser.castNode(opNode.getNext(), MethodNode.class);
+					String indexname = methodNode.getMethodName()  + "::" + opNode.getNameAsString();
+					AmiCenterGraphNode_Table tablenode = tableNodeByNames.get( methodNode.getMethodName());
+					AmiCenterGraphNode_Index indexNode = indexNodeByNames.get(indexname);
+					this.service.getAmiCenterManagerEditorsManager().showEditTablePortlet(tableSql, indexSql, tablenode, indexNode);
 				}
 
 			}
