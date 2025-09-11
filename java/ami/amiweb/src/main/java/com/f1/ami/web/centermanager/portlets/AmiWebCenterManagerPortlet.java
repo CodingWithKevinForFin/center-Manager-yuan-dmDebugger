@@ -750,7 +750,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				AmiCenterManagerUtils.popDialog(service, "CANNOT edit a read-only object", "EDIT FAIL");
 				return;
 			}
-			String query = "DESCRIBE INDEX " + tableNamePlusIndexName[1] + " ON " + tableNamePlusIndexName[0];
+			String query = "DESCRIBE INDEX " + AmiUtils.escapeVarName(tableNamePlusIndexName[1]) + " ON " +  AmiUtils.escapeVarName(tableNamePlusIndexName[0]);
 			prepareRequestToBackend(query);
 		} else if ("delete_index".equals(action)) {
 			StringBuilder query = new StringBuilder();
