@@ -1087,7 +1087,6 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 					}
 
 				} else if(tables.size() == 2 && query.contains("DESCRIBE TABLE") && query.contains("DESCRIBE INDEX")) {
-					System.out.println("123");
 					String indexSql = (String) tables.get(0).getRow(0).get("SQL");
 					String tableSql = (String) tables.get(1).getRow(0).get("SQL");
 					JavaExpressionParser.castNode(AmiCenterManagerUtils.scriptToAdminNode(indexSql).getNext(), SqlOperationNode.class).getNameAsString();
