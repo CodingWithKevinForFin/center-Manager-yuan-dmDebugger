@@ -794,4 +794,21 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		return Caster_String.INSTANCE.cast(f.getValue());
 
 	}
+	
+	public void setSelectedIndexNode(String indexname) {
+		WebTreeNode idxNode = null;
+		for(WebTreeNode n: this.tree.getTree().getNodes()){
+			if(n.getName().equals(indexname)) {
+				idxNode = n;
+				break;
+			}
+				
+		}
+		if(idxNode == null)
+			throw new NullPointerException("index not found: " + indexname);
+		this.tree.getTreeManager().setAllExpanded(true);
+		idxNode.setSelected(true);
+		//this.tree.getTreeManager().setActiveSelectedNode(idxNode);
+		onNodeClicked(tree.getTree(), idxNode);
+	}
 }

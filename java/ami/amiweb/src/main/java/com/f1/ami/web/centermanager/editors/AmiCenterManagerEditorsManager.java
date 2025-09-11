@@ -8,6 +8,7 @@ import java.util.Set;
 import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.centermanager.editors.AmiCenterManagerRichTableEditorPortlet;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
+import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Index;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Procedure;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Table;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Timer;
@@ -46,7 +47,8 @@ public class AmiCenterManagerEditorsManager {
 		editorsIds.addAll(this.tableEditorsByPortletId.keySet());
 		return editorsIds;
 	}
-
+	
+	//TODO: do we need to pass in the AmiCenterGraphNode_Table into showEditTablePortlet()?
 	public AmiCenterManagerRichTableEditorPortlet showEditTablePortlet(String sql, AmiCenterGraphNode_Table node) {
 		for (AmiCenterManagerRichTableEditorPortlet i : this.tableEditorsByPortletId.values()) {
 			if (i.getCorrelationNode() == node) {
@@ -63,6 +65,13 @@ public class AmiCenterManagerEditorsManager {
 
 		this.tableEditorsByPortletId.put(portletId, editor);
 		return editor;
+	}
+	
+	//show the editTablePortlet and open the index tab, select the corresponding index node in the tree
+	public AmiCenterManagerRichTableEditorPortlet showEditTablePortlet(String tablesql, String indexsql,  AmiCenterGraphNode_Table tableNode,  AmiCenterGraphNode_Index indexNode) {
+		AmiCenterManagerRichTableEditorPortlet richEditor = showEditTablePortlet(tablesql, tableNode);
+		richEditor.setActiveTabOnIndex(indexNode.getLabel());	
+		return richEditor;
 	}
 
 	public AmiCenterManagerRichTableEditorPortlet showAddTablePortlet() {

@@ -24,6 +24,11 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 
 	final private AmiWebService service;
 	private AmiWebHeaderPortlet header;
+	
+	private AmiCenterManagerEditColumnPortlet cp;
+	private AmiCenterManagerTriggerScirptTreePortlet tst;
+	private AmiCenterManagerIndexScirptTreePortlet ist;
+	
 	private AmiCenterGraphNode_Table correlationNode;
 
 	private TabPortlet tableEditorTabsPortlet;//contains triggers,indexes,columns
@@ -40,9 +45,7 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 		PortletManager manager = service.getPortletManager();
 		this.tableEditorTabsPortlet = new TabPortlet(generateConfig());
 		this.tableEditorTabsPortlet.getTabPortletStyle().setBackgroundColor("#4c4c4c");
-		AmiCenterManagerEditColumnPortlet cp = null;
-		AmiCenterManagerTriggerScirptTreePortlet tst = null;
-		AmiCenterManagerIndexScirptTreePortlet ist = null;
+	
 
 		//parse sql
 		if (!isAdd) {
@@ -76,6 +79,12 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 
 		this.tableEditorTabsPortlet.setIsCustomizable(false);
 		this.addChild(this.tableEditorTabsPortlet, 0, 1, 1, 1);
+
+	}
+	
+	public void setActiveTabOnIndex(String indexName) {
+		this.tableEditorTabsPortlet.setActiveTab(ist);
+		ist.setSelectedIndexNode(indexName);
 
 	}
 
