@@ -70,7 +70,10 @@ import com.f1.suite.web.tree.impl.FastWebTreeColumn;
 import com.f1.utils.SH;
 import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.IdentityHashSet;
+import com.f1.utils.string.SqlExpressionParser;
+import com.f1.utils.string.node.ArrayNode;
 import com.f1.utils.string.sqlnode.AdminNode;
+import com.f1.utils.string.sqlnode.SqlOperationNode;
 import com.f1.utils.structs.LongKeyMap;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
 
@@ -1026,50 +1029,56 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 
 				} else if (query.contains("DESCRIBE")) {
 					//describe [entity] [entity_name]
-					String temp = SH.afterFirst(query, " ");
-					String target = SH.beforeFirst(temp, " ");
-					String name = SH.afterFirst(temp, " ");
+					
+					SqlExpressionParser sep = new SqlExpressionParser();
+					com.f1.utils.string.Node describeNode = sep.parse(query);
+					AdminNode an = (AdminNode) describeNode;
+					ArrayNode describeObject = (ArrayNode) an.getNext();
+					SqlOperationNode son = (SqlOperationNode) describeObject.getInnerNode(0);
+					int operationId = son.getOperation();
+					String name = son.getNameAsString();
+			
 					Table t = tables.get(0);
 					Row r = t.getRow(0);
 					PortletManager manager = service.getPortletManager();
 					AdminNode n = null;
-					switch (target) {
-						case "TABLE":
+					switch (operationId) {
+						case SqlExpressionParser.ID_TABLE:
 							String tableSql = Caster_String.INSTANCE.cast(r.get("SQL"));
 							AmiCenterGraphNode_Table correlationNodeTable = tableNodeByNames.get(name);
 							this.service.getAmiCenterManagerEditorsManager().showEditTablePortlet(tableSql, correlationNodeTable);
 
 							break;
-						case "TRIGGER":
+						case SqlExpressionParser.ID_TRIGGER:
 							String triggerSql = Caster_String.INSTANCE.cast(r.get("SQL"));
 							AmiCenterGraphNode_Trigger correlationNodeTrigger = triggerNodeByNames.get(name);
 							this.service.getAmiCenterManagerEditorsManager().showEditCenterObjectPortlet(triggerSql, correlationNodeTrigger);
 							break;
-						case "TIMER":
+						case SqlExpressionParser.ID_TIMER:
 							String timerSql = Caster_String.INSTANCE.cast(r.get("SQL"));
 							timerSql = SH.beforeFirst(timerSql, "DISABLE TIMER");
 							AmiCenterGraphNode_Timer correlationNodeTimer = timerNodeByNames.get(name);
 							this.service.getAmiCenterManagerEditorsManager().showEditCenterObjectPortlet(timerSql, correlationNodeTimer);
 							break;
-						case "PROCEDURE":
+						case SqlExpressionParser.ID_PROCEDURE:
 							String procedureSql = Caster_String.INSTANCE.cast(r.get("SQL"));
 							AmiCenterGraphNode_Procedure correlationNodeProcedure = procedureNodeByNames.get(name);
 							this.service.getAmiCenterManagerEditorsManager().showEditCenterObjectPortlet(procedureSql, correlationNodeProcedure);
 							break;
-						case "METHOD":
+						case SqlExpressionParser.ID_METHOD:
 							String methodScript = Caster_String.INSTANCE.cast(r.get("SQL"));
 							n = AmiCenterManagerUtils.scriptToAdminNode(methodScript);
 							Map<String, String> methodConfig = AmiCenterManagerUtils.parseAdminNode_Method(n);
 							//TODO:
 							//manager.showDialog("Edit Method", new AmiCenterManagerAddMethodPortlet(manager.generateConfig(), methodConfig, AmiCenterEntityConsts.EDIT), 500, 550);
 							break;
-						case "INDEX":
+						case SqlExpressionParser.ID_INDEX:
 							String indexScript = Caster_String.INSTANCE.cast(r.get("SQL"));
 							n = AmiCenterManagerUtils.scriptToAdminNode(indexScript);
 							Map<String, String> indexConfig = AmiCenterManagerUtils.parseAdminNode_Index(n);
 							//manager.showDialog("Edit Method", new AmiCenterManagerAddMethodPortlet(manager.generateConfig(), indexConfig, AmiCenterEntityConsts.EDIT), 500, 550);
 							break;
-						case "DBO":
+						case SqlExpressionParser.ID_DBO:
 							break;
 					}
 
