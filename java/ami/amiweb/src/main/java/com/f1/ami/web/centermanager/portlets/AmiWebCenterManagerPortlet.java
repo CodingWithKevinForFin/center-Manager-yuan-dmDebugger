@@ -315,9 +315,10 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		this.treeNodeMethods = createNode(treeNodeCurCenter, "Methods", AmiWebConsts.CENTER_GRAPH_NODE_METHOD, null);
 		this.treeNodeIndexes = createNode(treeNodeCurCenter, "Indexes", AmiWebConsts.CENTER_GRAPH_NODE_INDEX, null);
 		this.treeNodeDBOs = createNode(treeNodeCurCenter, "DBOs", AmiWebConsts.CENTER_GRAPH_NODE_DBO, null);
-
+		
+		//tsc.reapplyState() called in prepareDbObjectNode()->onBackendResponse()
 		prepareDbObjectNode();
-		tsc.reapplyState();
+		//tsc.reapplyState();
 
 	}
 
