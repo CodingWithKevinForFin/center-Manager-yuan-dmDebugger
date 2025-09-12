@@ -169,6 +169,9 @@ public class AmiCenterManagerEditProcedurePortlet extends AmiCenterManagerAbstra
 		this.importFromText(sql, new StringBuilder());
 		//add form portlet listener
 		this.form.addFormPortletListener(this);
+		if(AmiUtils.isResevedTableName(this.nameField.getDefaultValue())) {
+			enableEditingCheckbox.setDisabled(true);
+		}
 		//by default editing is disabled
 		enableEdit(false);
 	}
