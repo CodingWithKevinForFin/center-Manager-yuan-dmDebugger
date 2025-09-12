@@ -1049,7 +1049,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 						case SqlExpressionParser.ID_TABLE:
 							String tableSql = Caster_String.INSTANCE.cast(r.get("SQL"));
 							AmiCenterGraphNode_Table correlationNodeTable = tableNodeByNames.get(name);
-							this.service.getAmiCenterManagerEditorsManager().showEditTablePortlet(tableSql, correlationNodeTable);
+							this.service.getAmiCenterManagerEditorsManager().showEditTablePortlet(tableSql, null, correlationNodeTable);
 
 							break;
 						case SqlExpressionParser.ID_TRIGGER:

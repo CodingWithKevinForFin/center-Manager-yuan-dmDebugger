@@ -31,6 +31,9 @@ import com.f1.utils.SH;
 import com.f1.utils.concurrent.IdentityHashSet;
 import com.f1.utils.converter.json2.ObjectToJsonConverter;
 
+//Step1:ensureCanProceedWithApply(){1. all the required fields are filled. 2. changes are detected}
+//Step2: canDropAndRecreate(): query the backend, call `ALTER <> <name> AS NEW_SCRIPT`
+//Step3: bring to the review and apply stage
 public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends GridPortlet
 		implements FormPortletContextMenuFactory, FormPortletContextMenuListener, FormPortletListener {
 	public static final int DEFAULT_ROWHEIGHT = 25;
@@ -125,7 +128,7 @@ public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends Gr
 		} else if (button == this.applyButton) {
 			if(ensureCanProceedWithApply()) {
 				String sql = isAdd ? previewScript() : previewEdit();
-				if(this instanceof AmiCenterManagerEditColumnPortlet)
+				if(this instanceof AmiCenterManagerEditColumnPortlet || this instanceof AmiCenterManagerEditIndexPortlet || isAdd)
 					getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, sql), 1000, 750);
 				else
 					checkCanDropAndRecreate();

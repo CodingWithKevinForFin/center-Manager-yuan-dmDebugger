@@ -603,7 +603,7 @@ public class AmiCenterManagerUtils {
 	}
 
 	public static short toIndexConstraintCode(String constraint) {
-		switch (constraint) {
+		switch (SH.toUpperCase(constraint)) {
 			case AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_NONE:
 				return AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_CODE_NONE;
 			case AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_UNIQUE:
@@ -611,7 +611,7 @@ public class AmiCenterManagerUtils {
 			case AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_PRIMARY:
 				return AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_CODE_PRIMARY;
 			default:
-				throw new RuntimeException("Unknow loggingType:" + constraint);
+				throw new RuntimeException("Unknow constraint:" + constraint);
 		}
 	}
 
@@ -629,7 +629,7 @@ public class AmiCenterManagerUtils {
 	}
 
 	public static short toIndexAutogenCode(String autogen) {
-		switch (autogen) {
+		switch (SH.toUpperCase(autogen)) {
 			case AmiCenterEntityConsts.AUTOGEN_TYPE_NONE:
 				return AmiCenterEntityConsts.AUTOGEN_TYPE_CODE_NONE;
 			case AmiCenterEntityConsts.AUTOGEN_TYPE_RAND:
@@ -685,7 +685,7 @@ public class AmiCenterManagerUtils {
 	}
 
 	public static short toIndexTypeCode(String indexType) {
-		switch (indexType) {
+		switch (SH.toUpperCase(indexType)) {
 			case AmiCenterEntityConsts.INDEX_TYPE_HASH:
 				return AmiCenterEntityConsts.INDEX_TYPE_CODE_HASH;
 			case AmiCenterEntityConsts.INDEX_TYPE_SORT:
@@ -693,7 +693,7 @@ public class AmiCenterManagerUtils {
 			case AmiCenterEntityConsts.INDEX_TYPE_SERIES:
 				return AmiCenterEntityConsts.INDEX_TYPE_CODE_SERIES;
 			default:
-				throw new NullPointerException();
+				throw new NullPointerException("Unknown index type:" + indexType);
 		}
 	}
 

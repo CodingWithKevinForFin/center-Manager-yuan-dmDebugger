@@ -33,7 +33,7 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 
 	private TabPortlet tableEditorTabsPortlet;//contains triggers,indexes,columns
 
-	public AmiCenterManagerRichTableEditorPortlet(PortletConfig config, String tableSql, AmiCenterGraphNode_Table correlationNode, boolean isAdd) {
+	public AmiCenterManagerRichTableEditorPortlet(PortletConfig config, String tableSql, String indexsql, AmiCenterGraphNode_Table correlationNode, boolean isAdd) {
 		super(config);
 		this.service = AmiWebUtils.getService(getManager());
 		this.correlationNode = correlationNode;
@@ -65,12 +65,12 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 
 			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), this, createTableScript, correlationNode);
 			tst = new AmiCenterManagerTriggerScirptTreePortlet(manager.generateConfig(), triggerBinding);
-			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), indexBinding, this.tableEditorTabsPortlet);
+			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), indexBinding, indexsql, this.tableEditorTabsPortlet);
 
 		} else {
 			cp = new AmiCenterManagerEditColumnPortlet(manager.generateConfig(), this, true);
 			tst = new AmiCenterManagerTriggerScirptTreePortlet(manager.generateConfig(), new HashMap<String, AmiCenterGraphNode_Trigger>());
-			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), new HashMap<String, AmiCenterGraphNode_Index>(), this.tableEditorTabsPortlet);
+			ist = new AmiCenterManagerIndexScirptTreePortlet(manager.generateConfig(), new HashMap<String, AmiCenterGraphNode_Index>(), null, this.tableEditorTabsPortlet);
 		}
 
 		this.tableEditorTabsPortlet.addChild("Table/Columns", cp);
@@ -89,7 +89,7 @@ public class AmiCenterManagerRichTableEditorPortlet extends GridPortlet {
 	}
 
 	public AmiCenterManagerRichTableEditorPortlet(PortletConfig config, boolean isAdd) {
-		this(config, null, null, isAdd);
+		this(config, null, null, null, isAdd);
 	}
 
 	public AmiCenterGraphNode_Table getCorrelationNode() {
