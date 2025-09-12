@@ -3,6 +3,7 @@ package com.f1.ami.web.centermanager.graph;
 import java.util.List;
 import java.util.Map;
 
+import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.dm.AmiWebDm;
@@ -21,6 +22,7 @@ public class AmiCenterManagerSmartGraphMenu {
 	public static BasicWebMenu createContextMenu(AmiWebService service, List<AmiCenterGraphNode> selectedNodesList, boolean allowModification) {
 		BasicWebMenu menu = new BasicWebMenu();
 		int selectedCount = selectedNodesList.size();
+		String nodeName = selectedNodesList.get(0).getLabel();
 		//switch on selected cnt
 		if (selectedCount == 1) {
 			AmiCenterGraphNode data = selectedNodesList.get(0);
@@ -29,6 +31,8 @@ public class AmiCenterManagerSmartGraphMenu {
 				if (allowModification) {
 					menu.addChild(new BasicWebMenuLink("Add Table", true, "add_table"));
 					menu.addChild(new BasicWebMenuLink("Edit Table", true, "edit_table"));
+				}
+				if(allowModification && !AmiUtils.isResevedTableName(nodeName)) {
 					menu.addChild(new BasicWebMenuLink("Delete Table", true, "delete_table"));
 				}
 			} else if (AmiCenterGraphNode.TYPE_TRIGGER == type) {
@@ -74,7 +78,12 @@ public class AmiCenterManagerSmartGraphMenu {
 			if (isNodeTypeSame) {//TODO:Also check isAllNodeModifiable
 				switch (selectedNodesList.get(0).getType()) {
 					case AmiCenterGraphNode.TYPE_TABLE:
-						menu.addChild(new BasicWebMenuLink("Delete Table", true, "delete_table"));
+						boolean hasSystemTables = false;
+						for(AmiCenterGraphNode n: selectedNodesList)
+							if(AmiUtils.isResevedTableName(n.getLabel()))
+								hasSystemTables = true;
+						if(!hasSystemTables)
+							menu.addChild(new BasicWebMenuLink("Delete Table", true, "delete_table"));
 						break;
 					case AmiCenterGraphNode.TYPE_TRIGGER:
 						menu.addChild(new BasicWebMenuLink("Delete Trigger", true, "delete_trigger"));
