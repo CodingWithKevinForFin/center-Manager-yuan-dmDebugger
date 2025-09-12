@@ -575,7 +575,7 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 //				return false;
 //			}
 //		}
-		if(this.editedFields.isEmpty()) {
+		if(this.editedFields.isEmpty() && !isAdd) {
 			AmiCenterManagerUtils.popDialog(service, "No Changes detected", "Error Applying Changes");
 			return false;
 		}

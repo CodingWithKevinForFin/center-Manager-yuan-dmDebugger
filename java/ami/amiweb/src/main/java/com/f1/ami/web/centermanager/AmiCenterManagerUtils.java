@@ -685,7 +685,7 @@ public class AmiCenterManagerUtils {
 	}
 
 	public static short toIndexTypeCode(String indexType) {
-		switch (indexType) {
+		switch (SH.toUpperCase(indexType)) {
 			case AmiCenterEntityConsts.INDEX_TYPE_HASH:
 				return AmiCenterEntityConsts.INDEX_TYPE_CODE_HASH;
 			case AmiCenterEntityConsts.INDEX_TYPE_SORT:
@@ -693,7 +693,7 @@ public class AmiCenterManagerUtils {
 			case AmiCenterEntityConsts.INDEX_TYPE_SERIES:
 				return AmiCenterEntityConsts.INDEX_TYPE_CODE_SERIES;
 			default:
-				throw new NullPointerException();
+				throw new NullPointerException("Unknown index type:" + indexType);
 		}
 	}
 

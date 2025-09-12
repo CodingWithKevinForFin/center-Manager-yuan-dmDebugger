@@ -136,6 +136,10 @@ public class AmiCenterManagerEditorsManager {
 				editor = new AmiCenterManagerEditProcedurePortlet(generateConfig(), true);
 				target = "Procedure";
 				break;
+			case AmiCenterGraphNode_Index.CODE:
+				editor = new AmiCenterManagerEditIndexPortlet(generateConfig(), true);
+				target = "Index";
+				break;
 			default:
 				throw new NullPointerException();
 		}

@@ -23,6 +23,7 @@ import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
 import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Index;
+import com.f1.ami.web.centermanager.portlets.AmiCenterManagerReviewApplyScriptPortlet;
 import com.f1.base.Action;
 import com.f1.base.Row;
 import com.f1.base.Table;
@@ -96,7 +97,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 
 	final private AmiWebService service;
 	//buttons
-	final private FormPortletButton testButton;
+	final private FormPortletButton applyButton;
 	final private FormPortletButton resetButton;
 	final private FormPortletButton diffButton;
 	final private FormPortletButton previewButton;
@@ -180,11 +181,11 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		form3.addField(autogenField);
 		autogenField.setVisible(false);
 		//buttons
-		this.testButton = new FormPortletButton("Test");
+		this.applyButton = new FormPortletButton("Test");
 		this.resetButton = new FormPortletButton("Reset");
 		this.diffButton = new FormPortletButton("Diff");
 		this.previewButton = new FormPortletButton("Preview");
-		this.testButton.setEnabled(false);
+		this.applyButton.setEnabled(false);
 		this.resetButton.setEnabled(false);
 		this.diffButton.setEnabled(false);
 		this.previewButton.setEnabled(false);
@@ -203,7 +204,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		//allocate 70 px for form1
 		this.gridForm.setRowSize(0, 70);
 
-		form3.addButton(testButton);
+		form3.addButton(applyButton);
 		form3.addButton(resetButton);
 		form3.addButton(diffButton);
 		form3.addButton(previewButton);
@@ -473,7 +474,6 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 			}
 			//lastly revert index changes if any
 			this.revertIndexChanges();
-
 		} else if (this.previewButton == button) {
 			String text = AmiCenterManagerUtils.formatPreviewScript(previewScript());
 			PortletStyleManager_Dialog dp = service.getPortletManager().getStyleManager().getDialogStyle();
@@ -511,13 +511,13 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 			String oldConfig = AmiWebLayoutHelper.toJson(a, service);
 			String newConfig = AmiWebLayoutHelper.toJson(b, service);
 			AmiWebUtils.diffConfigurations(service, oldConfig, newConfig, "Orginal Script", "New Script", null);
-		} else if (this.testButton == button) {
+		} else if (this.applyButton == button) {
 			if (!validateFields())
 				return;
 			String tableName = this.onField.getValue();
-			String query = "DROP INDEX " + this.fieldCache.get(AmiCenterEntityConsts.OPTION_NAME_INDEX_NAME) + " ON " + tableName + ";" + previewScript();
-			getManager().showDialog("Submit Index", new AmiCenterManagerSubmitEditScriptPortlet(this.service, generateConfig(), query),
-					AmiCenterManagerSubmitEditScriptPortlet.DEFAULT_PORTLET_WIDTH, AmiCenterManagerSubmitEditScriptPortlet.DEFAULT_PORTLET_HEIGHT);
+			String sql = "DROP INDEX " + this.fieldCache.get(AmiCenterEntityConsts.OPTION_NAME_INDEX_NAME) + " ON " + tableName + ";" + previewScript();
+			getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), null, sql), 1000, 750);
+
 		}
 	}
 
@@ -534,6 +534,10 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 	}
 
 	private boolean validateFields() {
+		if(editedFields.isEmpty() && editedSelectFields.isEmpty()) {
+			AmiCenterManagerUtils.popDialog(service, "No changes detected", "Warning");
+			return false;
+		}
 		//check if all the required fields have been filled in 
 		if (!isAllIndexFieldFilled()) {
 			return false;
@@ -544,6 +548,11 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 			AmiCenterManagerUtils.popDialog(service, "Autogen can only apply to ONE column with primary constraint", "Warning");
 			return false;
 		}
+		
+		//check only the first 64 columns can participate in an index:
+		
+		//check if the variables/columns are valid
+		
 
 		return true;
 	}
@@ -584,7 +593,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 	}
 	private void onFieldChanged(FormPortletField field) {
 		if (AmiCenterManagerIndexConfigForm.TYPE_COLNAME.equals(field.getName()) || AmiCenterManagerIndexConfigForm.TYPE_INDEXTYPE.equals(field.getName())) {
-			this.testButton.setEnabled(true);
+			this.applyButton.setEnabled(true);
 			this.resetButton.setEnabled(true);
 			this.diffButton.setEnabled(true);
 			return;
@@ -624,7 +633,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		}
 		boolean hasNoChanges = this.editedFields.isEmpty() && this.editedSelectFields.isEmpty();
 		if (hasNoChanges != hadNoChanges) {
-			this.testButton.setEnabled(!hasNoChanges);
+			this.applyButton.setEnabled(!hasNoChanges);
 			this.resetButton.setEnabled(!hasNoChanges);
 			this.diffButton.setEnabled(!hasNoChanges);
 		}
@@ -732,11 +741,11 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		updateSuggestedSizeOfWhereFieldForm();
 		//check if there are changes on the index config
 		if (form2.getSize() != this.curIndexSize) {
-			this.testButton.setEnabled(true);
+			this.applyButton.setEnabled(true);
 			this.resetButton.setEnabled(true);
 			this.diffButton.setEnabled(true);
 		} else {
-			this.testButton.setEnabled(false);
+			this.applyButton.setEnabled(false);
 			this.resetButton.setEnabled(false);
 			this.diffButton.setEnabled(false);
 		}
@@ -746,7 +755,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 	public void onOptionFieldRemoved() {
 		updateSuggestedSizeOfWhereFieldForm();
 		if (form2.getSize() != this.curIndexSize) {
-			this.testButton.setEnabled(true);
+			this.applyButton.setEnabled(true);
 			this.resetButton.setEnabled(true);
 			this.diffButton.setEnabled(true);
 		}
@@ -773,7 +782,8 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 				sb.append(',');
 		}
 		sb.append(')');
-		sb.append(" USE ").append(prepareUseClause());
+		if(SH.is(prepareUseClause()))
+			sb.append(" USE ").append(prepareUseClause());
 		sb.append(";");
 		return sb.toString();
 	}

@@ -31,6 +31,9 @@ import com.f1.utils.SH;
 import com.f1.utils.concurrent.IdentityHashSet;
 import com.f1.utils.converter.json2.ObjectToJsonConverter;
 
+//Step1:ensureCanProceedWithApply(){1. all the required fields are filled. 2. changes are detected}
+//Step2: canDropAndRecreate(): query the backend, call `ALTER <> <name> AS NEW_SCRIPT`
+//Step3: bring to the review and apply stage
 public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends GridPortlet
 		implements FormPortletContextMenuFactory, FormPortletContextMenuListener, FormPortletListener {
 	public static final int DEFAULT_ROWHEIGHT = 25;

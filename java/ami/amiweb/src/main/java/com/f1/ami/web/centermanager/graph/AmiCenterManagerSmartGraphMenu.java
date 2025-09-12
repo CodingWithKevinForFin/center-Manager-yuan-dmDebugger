@@ -126,8 +126,7 @@ public class AmiCenterManagerSmartGraphMenu {
 		} else if ("add_procedure".equals(id)) {
 			service.getAmiCenterManagerEditorsManager().showAddCenterObjectPortlet(AmiCenterGraphNode.TYPE_PROCEDURE);
 		} else if ("add_index".equals(id)) {
-			//manager.showDialog("Add Index", new AmiCenterManagerAddIndexPortlet(manager.generateConfig()), 500, 550);
-		} else if ("add_method".equals(id)) {
+			service.getAmiCenterManagerEditorsManager().showAddCenterObjectPortlet(AmiCenterGraphNode.TYPE_INDEX);
 			//manager.showDialog("Add Method", new AmiCenterManagerEditMethodPortlet(manager.generateConfig(), true), 1000, 1450);
 		} else if ("add_dbo".equals(id)) {
 			//manager.showDialog("Add Dbo", new AmiCenterManagerAddDboPortlet(manager.generateConfig()), 500, 550);
