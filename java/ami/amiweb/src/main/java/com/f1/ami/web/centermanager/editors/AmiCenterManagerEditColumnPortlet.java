@@ -255,7 +255,7 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		this.userLogTable.getTable().addMenuListener(this);
 		this.userLogTable.getTable().setMenuFactory(this);
 		DividerPortlet div1 = new DividerPortlet(generateConfig(), false, this.userLogTable, this.columnMetadata);
-
+		
 		this.columnMetaDataEditForm = new AmiCenterManagerColumnMetaDataEditForm(generateConfig(), this, null, AmiCenterManagerColumnMetaDataEditForm.MODE_EDIT);
 		this.columnMetaDataEditForm.resetForm();
 		GridPortlet formGrid = new GridPortlet(generateConfig());
@@ -269,6 +269,20 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		div.setOffsetFromTopPx(500);
 		tableInfoPortlet.addFormPortletListener(this);
 	}
+	
+	public AmiCenterManagerEditColumnPortlet(PortletConfig config, AmiCenterManagerRichTableEditorPortlet parent, String tableSql, AmiCenterGraphNode_Table correlationNode) {
+		this(config, parent, false);
+		this.correlationNode = correlationNode;
+		this.sql = tableSql;
+		this.importFromText(tableSql, new StringBuilder());
+		if(AmiUtils.isResevedTableName(this.tableNameField.getDefaultValue())) {
+			enableEditingCheckbox.setDisabled(true);
+			columnMetadata.setTableTitle(columnMetadata.getTitle() + " (READ ONLY)");
+		}
+		
+		enableEdit(false);
+	}
+
 	
 	private void disableAllTableOptionsEditingExceptForName() {
 		tablePersistEngineField.setDisabled(true);
@@ -668,14 +682,6 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 		return head;
 	}
 
-	public AmiCenterManagerEditColumnPortlet(PortletConfig config, AmiCenterManagerRichTableEditorPortlet parent, String tableSql, AmiCenterGraphNode_Table correlationNode) {
-		this(config, parent, false);
-		this.correlationNode = correlationNode;
-		this.sql = tableSql;
-		this.importFromText(tableSql, new StringBuilder());
-		enableEdit(false);
-	}
-
 	public SmartTable getColumnTable() {
 		return this.columnMetadata.getTable().getTable();
 	}
@@ -993,6 +999,8 @@ public class AmiCenterManagerEditColumnPortlet extends AmiCenterManagerAbstractE
 
 	@Override
 	public WebMenu createMenu(WebTable table) {
+		if(AmiUtils.isResevedTableName(this.tableNameField.getDefaultValue()))
+			return null;
 		FastWebTable ftw = (FastWebTable) table;
 		BasicWebMenu m = new BasicWebMenu();
 		int selectedRowSize = ftw.getSelectedRows().size();
