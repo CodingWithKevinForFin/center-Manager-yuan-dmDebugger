@@ -179,7 +179,7 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	
 	//TODO:
 	public boolean hasEdit() {
-		return !this.editedFields.isEmpty() && !form2.getCurIndexConfig().equals(origIndexConfig);
+		return !this.editedFields.isEmpty() || !form2.getCurIndexConfig().equals(origIndexConfig);
 	}
 	
 	@Override
@@ -203,14 +203,16 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 
 	@Override
 	public String previewEdit() {
-		String sql =  "DROP INDEX " + AmiUtils.escapeVarName(nameField.getDefaultValue()) + " ON " + AmiUtils.escapeVarName(getOnValue()) + ";" + previewScript();
+		String on = SH.is(getOnValue()) ? AmiUtils.escapeVarName(getOnValue()) : "";
+		String sql =  "DROP INDEX " + AmiUtils.escapeVarName(nameField.getDefaultValue()) + " ON " + on + ";" + previewScript();
 		return sql;
 	}
 	
 	public String getOnValue() {
 		LinkedHashSet<String> ons = onField.getValue();
-		if(ons.size() > 0)
+		if(ons.size() == 1)
 			return (String)ons.toArray()[0];
+		AmiCenterManagerUtils.popDialog(service, "The index can only bind to exactly 1 table", "Error Editing Index");
 		return null;
 	}
 	
@@ -373,6 +375,10 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	@Override
 	public boolean ensureCanProceedWithApply() {
 		//check if all the required fields have been filled in 
+		if(SH.isnt(getOnValue()) || SH.isnt(nameField.getValue()))
+			return false;
+		
+		//check the indexes are configured
 		if (!isAllIndexFieldFilled()) {
 			return false;
 		}
