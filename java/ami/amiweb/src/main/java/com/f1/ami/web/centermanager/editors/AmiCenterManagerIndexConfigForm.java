@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
+import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
 import com.f1.suite.web.menu.WebMenu;
 import com.f1.suite.web.menu.impl.BasicWebMenuLink;
 import com.f1.suite.web.portal.PortletConfig;
@@ -19,6 +20,7 @@ import com.f1.suite.web.portal.impl.form.FormPortletTextField;
 import com.f1.suite.web.portal.impl.form.FormPortletTitleField;
 import com.f1.utils.CH;
 import com.f1.utils.SH;
+import com.f1.utils.structs.Tuple2;
 
 public class AmiCenterManagerIndexConfigForm extends FormPortlet implements FormPortletListener {
 	private static final int DEFAULT_ROWHEIGHT = 25;
@@ -126,6 +128,17 @@ public class AmiCenterManagerIndexConfigForm extends FormPortlet implements Form
 		this.setSize(this.getSize() + 1);
 		this.repositionFromPosition(0);
 		this.listener.onOptionFieldAdded();
+	}
+	
+	public List<Tuple2<String, String>> getCurIndexConfig(){
+		List<Tuple2<String, String>> indexconfig = new ArrayList<Tuple2<String, String>>();
+		for(int i = 0; i < getSize(); i++) {
+			FormPortletTextField col = colNameFields.get(i);
+			FormPortletSelectField<Short> tf = indexTypeFields.get(i);
+			Tuple2<String, String> cfg = new Tuple2<String, String>(col.getValue(), AmiCenterManagerUtils.toIndexType(tf.getValue()));
+			indexconfig.add(cfg);
+		}
+		return indexconfig;
 	}
 	private void removeIndexFieldAtPos(int position) {
 		FormPortletTextField colNameField = this.colNameFields.remove(position);

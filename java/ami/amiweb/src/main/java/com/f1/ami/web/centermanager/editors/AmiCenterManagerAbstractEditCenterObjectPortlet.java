@@ -128,7 +128,7 @@ public abstract class AmiCenterManagerAbstractEditCenterObjectPortlet extends Gr
 		} else if (button == this.applyButton) {
 			if(ensureCanProceedWithApply()) {
 				String sql = isAdd ? previewScript() : previewEdit();
-				if(this instanceof AmiCenterManagerEditColumnPortlet)
+				if(this instanceof AmiCenterManagerEditColumnPortlet || this instanceof AmiCenterManagerEditIndexPortlet || isAdd)
 					getManager().showDialog("Apply SQL", new AmiCenterManagerReviewApplyScriptPortlet(generateConfig(), this, sql), 1000, 750);
 				else
 					checkCanDropAndRecreate();

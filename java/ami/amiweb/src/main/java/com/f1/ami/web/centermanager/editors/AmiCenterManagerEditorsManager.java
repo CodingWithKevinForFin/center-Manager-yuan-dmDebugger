@@ -49,14 +49,14 @@ public class AmiCenterManagerEditorsManager {
 	}
 	
 	//TODO: do we need to pass in the AmiCenterGraphNode_Table into showEditTablePortlet()?
-	public AmiCenterManagerRichTableEditorPortlet showEditTablePortlet(String sql, AmiCenterGraphNode_Table node) {
+	public AmiCenterManagerRichTableEditorPortlet showEditTablePortlet(String sql, String indexsql, AmiCenterGraphNode_Table node) {
 		for (AmiCenterManagerRichTableEditorPortlet i : this.tableEditorsByPortletId.values()) {
 			if (i.getCorrelationNode() == node) {
 				PortletHelper.ensureVisible(i);
 				return i;
 			}
 		}
-		AmiCenterManagerRichTableEditorPortlet editor = new AmiCenterManagerRichTableEditorPortlet(generateConfig(), sql, node, false);
+		AmiCenterManagerRichTableEditorPortlet editor = new AmiCenterManagerRichTableEditorPortlet(generateConfig(), sql, indexsql, node, false);
 		String portletId = editor.getPortletId();
 		Window w = this.service.getDesktop().getDesktop().addChild("Edit Table", editor);
 
@@ -69,7 +69,7 @@ public class AmiCenterManagerEditorsManager {
 	
 	//show the editTablePortlet and open the index tab, select the corresponding index node in the tree
 	public AmiCenterManagerRichTableEditorPortlet showEditTablePortlet(String tablesql, String indexsql,  AmiCenterGraphNode_Table tableNode,  AmiCenterGraphNode_Index indexNode) {
-		AmiCenterManagerRichTableEditorPortlet richEditor = showEditTablePortlet(tablesql, tableNode);
+		AmiCenterManagerRichTableEditorPortlet richEditor = showEditTablePortlet(tablesql, indexsql, tableNode);
 		richEditor.setActiveTabOnIndex(indexNode.getLabel());	
 		return richEditor;
 	}

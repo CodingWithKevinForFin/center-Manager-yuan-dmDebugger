@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
@@ -30,12 +31,16 @@ import com.f1.suite.web.portal.impl.form.FormPortletSelectField;
 import com.f1.suite.web.portal.impl.form.FormPortletTextField;
 import com.f1.utils.CH;
 import com.f1.utils.SH;
+import com.f1.utils.casters.Caster_String;
+import com.f1.utils.string.ExpressionParserException;
 import com.f1.utils.string.JavaExpressionParser;
 import com.f1.utils.string.Node;
+import com.f1.utils.string.node.ConstNode;
 import com.f1.utils.string.node.DeclarationNode;
 import com.f1.utils.string.node.MethodNode;
 import com.f1.utils.string.sqlnode.AdminNode;
 import com.f1.utils.string.sqlnode.SqlOperationNode;
+import com.f1.utils.string.sqlnode.UseNode;
 import com.f1.utils.structs.Tuple2;
 import com.f1.utils.structs.table.SmartTable;
 
@@ -60,6 +65,8 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	private int curIndexSize = -1;
 	private List<String> columns = new ArrayList<String>();
 	private List<Tuple2<String, String>> origIndexConfig = new ArrayList<Tuple2<String, String>> ();
+	
+	private String sql;
 	
 	public AmiCenterManagerEditIndexPortlet(PortletConfig config, boolean isAdd) {
 		super(config, isAdd);
@@ -130,11 +137,14 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 		addChild(form2, 0, 1);
 		addChild(form3, 0, 2);
 		addChild(buttonsFp, 0, 3);
-		//add an empty index for the user to configure
-		curIndexSize = 1;
-		this.form2.addIndexFieldAtPos(0);
+		if(isAdd) {
+			//add an empty index for the user to configure
+			curIndexSize = 1;
+			this.form2.addIndexFieldAtPos(0);
+		}	
 		setRowSize(0, 150);
-		setRowSize(1, 500);
+		setRowSize(1, 280);
+		
 
 		setRowSize(3, buttonsFp.getButtonPanelHeight());
 
@@ -142,6 +152,7 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	
 	public AmiCenterManagerEditIndexPortlet(PortletConfig config, String sql) {
 		this(config, false);
+		this.sql = sql;
 		importFromText(sql, new StringBuilder());
 		enableEdit(false);
 	}
@@ -164,7 +175,13 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 		}
 		return null;
 	}
-
+	
+	
+	//TODO:
+	public boolean hasEdit() {
+		return !this.editedFields.isEmpty() && !form2.getCurIndexConfig().equals(origIndexConfig);
+	}
+	
 	@Override
 	public void onContextMenu(FormPortlet portlet, String action, FormPortletField node) {		
 		if (portlet == this.form2) {
@@ -180,6 +197,8 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 
 	@Override
 	public void checkCanDropAndRecreate() {
+		
+		
 	}
 
 	@Override
@@ -198,9 +217,25 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	@Override
 	public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {
 		super.onFieldValueChanged(portlet, field, attributes);
+		onFieldChanged(field);
 		if(field == onField && !onField.getValue().isEmpty()) {
 			sendQueryToBackend("SHOW COLUMNS WHERE TableName == \"" + AmiUtils.escapeVarName(getOnValue()) + "\" ORDER BY Position;");	
-		}	
+		} else if(field == constraintField) {
+			showAutoGen();
+		}
+		if(hasEdit())
+			applyButton.setEnabled(true);
+	}
+	
+	public boolean canShowAutogen() {
+		//first check the number of indexes is exactly 1 
+		if(form2.getSize() > 0 && form2.getSize() != 1)
+			return false;
+		
+		//then check that the constraint is primary
+		if(constraintField.getValue() != AmiCenterEntityConsts.INDEX_CONSTRAINT_TYPE_CODE_PRIMARY)
+			return false;
+		return true;
 	}
 	
 	
@@ -243,19 +278,42 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 
 	@Override
 	public void importFromText(String text, StringBuilder sink) {
+		if(text == null)
+			return;
 		String idxName, tableName = null;
+		Map<String, Node> useOptions = null;
+		origIndexConfig.clear();
 		form2.resetIndexFields();
 		try {
 			AdminNode an = AmiCenterManagerUtils.scriptToAdminNode(text);
 			SqlOperationNode indexNode =  JavaExpressionParser.castNode(an.getNext(), SqlOperationNode.class);
 			MethodNode methodNode = JavaExpressionParser.castNode(indexNode.getNext(), MethodNode.class);
-		
+			UseNode useNode = an.getUseNode();
 			idxName = indexNode.getNameAsString();
 			tableName = methodNode.getMethodName();
 			nameField.setValue(idxName);
 			nameField.setDefaultValue(idxName);
 			onField.setValue(Collections.singleton(tableName));
 			onField.setDefaultValue(Collections.singleton(tableName));
+			
+			//need to parse autogen and primary first to determine if we can make autogen visible
+			if(useNode != null) {
+				useOptions = useNode.getOptionsMap();
+				for (Entry<String, Node> s : useOptions.entrySet()) {
+					String key = s.getKey();
+					ConstNode sval = (ConstNode)s.getValue();
+					if ("constraint".equalsIgnoreCase(key)) {
+						String t = (String) sval.getValue();
+						constraintField.setValue(AmiCenterManagerUtils.toIndexConstraintCode(t));
+						constraintField.setDefaultValue(AmiCenterManagerUtils.toIndexConstraintCode(t));
+					}else if("autogen".equalsIgnoreCase(key)) {
+						String t =  (String) sval.getValue();
+						autogenField.setValue(AmiCenterManagerUtils.toIndexAutogenCode(t));
+						autogenField.setDefaultValue(AmiCenterManagerUtils.toIndexAutogenCode(t));
+						autogenField.setVisible(true);
+					}
+				}
+			}
 			for(int i = 0; i < methodNode.getParamsCount(); i++) {
 				DeclarationNode n = (DeclarationNode) methodNode.getParamAt(i);
 				String col = n.getVartype();
@@ -267,14 +325,26 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 				FormPortletSelectField indexTypeField = this.form2.getIndexTypeAt(i);
 				colNameField.setValue(col);
 				indexTypeField.setValue(AmiCenterManagerUtils.toIndexTypeCode(idxType));
-				
-				
 			}
-		
+			
+			
 		
 		}catch(Exception e) {
 			AmiCenterManagerUtils.popDialog(service, e.getMessage(), "Error importing Script");
 		}
+	}
+	
+	private void showAutoGen() {
+		if(canShowAutogen())
+			autogenField.setVisible(true);
+		else {
+			autogenField.setVisible(false);
+			//when the constraint is not primary, autogen should always be reset to NONE
+			autogenField.setValue(AmiCenterEntityConsts.AUTOGEN_TYPE_CODE_NONE);
+			onFieldChanged(this.autogenField);
+		}
+			
+
 	}
 
 	@Override
@@ -298,31 +368,44 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 		}
 		return true;
 	}
+	
 
 	@Override
 	public boolean ensureCanProceedWithApply() {
-		if(editedFields.isEmpty() && !isAdd) {
-			AmiCenterManagerUtils.popDialog(service, "No changes detected", "Warning");
-			return false;
-		}
 		//check if all the required fields have been filled in 
 		if (!isAllIndexFieldFilled()) {
 			return false;
 		}
-
+		if(!hasEdit() && !isAdd) {
+			AmiCenterManagerUtils.popDialog(service, "No changes detected", "Warning");
+			return false;
+		}
 		//check autogen
 		if (this.autogenField.getValue() != AmiCenterEntityConsts.AUTOGEN_TYPE_CODE_NONE && getIndexCount() != 1) {
 			AmiCenterManagerUtils.popDialog(service, "Autogen can only apply to ONE column with primary constraint", "Warning");
 			return false;
 		}
 		
-		//check only the first 64 columns can participate in an index:
+		//check only the first 64 columns can participate in an index:	
+		for(Tuple2<String, String> idx: form2.getCurIndexConfig()) {
+			String colname = idx.getA();
+			int position = columns.indexOf(colname);
+			if(position == -1) {
+				//throw new NullPointerException("Column:" + colname + " does not exist");
+				AmiCenterManagerUtils.popDialog(service, "Column:" + colname + " does not exist", "Error Editing Index");
+				return false;
+			}
+				
+			if(position > 63) {
+				AmiCenterManagerUtils.popDialog(service, "only the first 64 columns can participate in an index", "Error Editing Index");
+				return false;
+			}
+		}
 		
 		//check if the variables/columns are valid
-		
-
 		return true;
 	}
+	
 	
 	private void updateSuggestedSizeOfWhereFieldForm() {
 		this.gridForm.setRowSize(1, form2.getSuggestedHeight(null));
@@ -331,6 +414,7 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	@Override
 	public void onOptionFieldAdded() {
 		updateSuggestedSizeOfWhereFieldForm();
+		showAutoGen();
 		//check if there are changes on the index config
 		if(!isAdd) {
 			if (form2.getSize() != this.curIndexSize) {
@@ -346,12 +430,13 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	
 	@Override
 	public void revertEdit() {
-		super.revertEdit();
+		importFromText(sql, new StringBuilder());
 	}
 
 	@Override
 	public void onOptionFieldRemoved() {
 		updateSuggestedSizeOfWhereFieldForm();
+		showAutoGen();
 		if(!isAdd) {
 			if (form2.getSize() != this.curIndexSize) {
 				this.applyButton.setEnabled(true);
@@ -382,13 +467,16 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 		}
 		if (response.getOk() && response.getTables().size() == 1) {
 			Table t = response.getTables().get(0);
-			if(query.startsWith("SHOW COLUMNS")) {
+			if(query.startsWith("SHOW FULL COLUMNS")) {
 				columns.clear();
 				for(Row r: t.getRows()) {
 					String colName = (String) r.get("ColumnName");
 					columns.add(colName);
 				}
 				
+			}else if(query.startsWith("DESCRIBE INDEX")) {
+				String sql = (String) t.getRow(0).get("SQL");
+				importFromText(sql,  new StringBuilder());
 			}
 		}
 	}
