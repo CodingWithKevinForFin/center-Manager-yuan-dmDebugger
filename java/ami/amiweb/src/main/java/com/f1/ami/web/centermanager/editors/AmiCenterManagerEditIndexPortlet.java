@@ -375,8 +375,12 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	@Override
 	public boolean ensureCanProceedWithApply() {
 		//check if all the required fields have been filled in 
-		if(SH.isnt(getOnValue()) || SH.isnt(nameField.getValue()))
+		if(SH.isnt(getOnValue()))
 			return false;
+		if(SH.isnt(nameField.getValue())) {
+			AmiCenterManagerUtils.popDialog(service, "Missing required field: Name", "Warning");
+			return false;
+		}
 		
 		//check the indexes are configured
 		if (!isAllIndexFieldFilled()) {
