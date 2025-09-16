@@ -1365,6 +1365,7 @@ public class AmiCenterSqlProcessorMutator implements SqlProcessorTableMutator {
 					break;
 				}
 				AmiTable table = db.getAmiTable(on);
+				AmiHdbTableRep hdbrep = session.getHdb().getTableRepNoThrow(on);
 				if (table == null)
 					throw new ExpressionParserException(onPos, "Table not found: " + on);
 				AmiIndexImpl index = (AmiIndexImpl) table.getAmiIndexNoThrow(name);
