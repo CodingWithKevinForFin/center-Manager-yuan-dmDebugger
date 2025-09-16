@@ -220,8 +220,8 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {
 		super.onFieldValueChanged(portlet, field, attributes);
 		onFieldChanged(field);
-		if(field == onField && !onField.getValue().isEmpty()) {
-			sendQueryToBackend("SHOW COLUMNS WHERE TableName == \"" + AmiUtils.escapeVarName(getOnValue()) + "\" ORDER BY Position;");	
+		if(field == onField && !onField.getValue().isEmpty() && SH.is(getOnValue())) {
+			sendQueryToBackend("SHOW FULL COLUMNS WHERE TableName == \"" + AmiUtils.escapeVarName(getOnValue()) + "\" ORDER BY Position;");	
 		} else if(field == constraintField) {
 			showAutoGen();
 		}
