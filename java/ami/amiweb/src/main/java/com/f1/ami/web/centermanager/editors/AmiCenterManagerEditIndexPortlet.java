@@ -326,7 +326,9 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 				FormPortletTextField colNameField = this.form2.getIndexColumnNameAt(i);
 				FormPortletSelectField indexTypeField = this.form2.getIndexTypeAt(i);
 				colNameField.setValue(col);
+				colNameField.setDefaultValue(col);
 				indexTypeField.setValue(AmiCenterManagerUtils.toIndexTypeCode(idxType));
+				indexTypeField.setDefaultValue(AmiCenterManagerUtils.toIndexTypeCode(idxType));
 			}
 			
 			
