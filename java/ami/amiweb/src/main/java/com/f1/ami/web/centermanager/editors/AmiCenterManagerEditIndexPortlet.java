@@ -442,6 +442,8 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 	
 	@Override
 	public void revertEdit() {
+		//importFromText(sql, new StringBuilder());
+		super.revertEdit();
 		importFromText(sql, new StringBuilder());
 	}
 
