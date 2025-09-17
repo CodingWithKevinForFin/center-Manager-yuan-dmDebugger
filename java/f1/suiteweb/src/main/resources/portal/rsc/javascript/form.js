@@ -3646,12 +3646,13 @@ MultiCheckboxField.prototype.createMenuJson=function(){
 	var fieldId = this.id;
 	var portletId = this.portlet.getId();
 	var jsGetField = 'g("'+portletId+'").getField("'+fieldId+'")';
+	this.pending = [...this.checked];
 	for(var [option, val] of this.options){
 		var item = {};
 		var checked=this.isChecked(option);
-		if (checked) {
-			this.pending.push(option);
-		}
+//		if (checked) {
+//			this.pending.push(option);
+//		}
 		item.text = "<input type='checkbox' "+ (checked?"checked":"") +" name='"+ option +"' >" + escapeHtml(val) +"";
 		item.type = "action";
 		item.enabled = "true";
