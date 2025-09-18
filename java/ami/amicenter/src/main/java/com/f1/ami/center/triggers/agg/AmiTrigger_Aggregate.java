@@ -36,6 +36,7 @@ import com.f1.utils.string.node.OperationNode;
 import com.f1.utils.string.node.VariableNode;
 import com.f1.utils.string.sqlnode.SqlColumnsNode;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
+import com.f1.utils.structs.table.derived.DerivedCellCalculatorConst;
 import com.f1.utils.structs.table.derived.DerivedCellCalculatorWithDependencies;
 import com.f1.utils.structs.table.stack.CalcFrameStack;
 import com.f1.utils.structs.table.stack.ChildCalcTypesStack;
@@ -56,6 +57,8 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 	private int[] groupByTargetPos;
 	private int groupByCount;
 	private int aggregateCount;
+	
+	private boolean implictGroupby;
 
 	private HasherMap<Object, RowAndCount> targetIndex = new HasherMap<Object, RowAndCount>(ArrayHasher.INSTANCE);
 	private AmiTableImpl targetTable;
@@ -257,29 +260,37 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 			String groupBy = binding.getOption(Caster_String.INSTANCE, "groupBys", null);
 			SqlColumnsNode groupByNodes = ep.parseSqlColumnsNdoe(SqlExpressionParser.ID_GROUPBY, groupBy);
 			//			Node[] cols = groupByNodes.columns;
-			groupBys = new DerivedCellCalculator[groupByNodes.getColumnsCount()];
-			groupByTargets = new String[groupByNodes.getColumnsCount()];
-			if (groupBys.length == 0)
-				throw new RuntimeException("GROUPBYS options must have atleast one group by clause");
+			
+			//groupByNodes.getColumnsCount() == 0 means it is a implicit group by
+			groupBys = groupByNodes.getColumnsCount() == 0 ? new DerivedCellCalculator[1] : new DerivedCellCalculator[groupByNodes.getColumnsCount()];
+			groupByTargets = groupByNodes.getColumnsCount() == 0 ? new String[1] : new String[groupByNodes.getColumnsCount()];
+//			if (groupBys.length == 0)
+//				throw new RuntimeException("GROUPBYS options must have atleast one group by clause");
+			if(groupByNodes.getColumnsCount() == 0) {
+				groupBys[0] =  new DerivedCellCalculatorConst(0, true);
+				implictGroupby = true;
 
-			for (int i = 0; i < groupByNodes.getColumnsCount(); i++) {
-				Node col = groupByNodes.getColumnAt(i);
-				String targetName;
-				OperationNode op;
-				try {
-					op = (OperationNode) col;
-					VariableNode vn = (VariableNode) op.getLeft();
-					targetName = vn.getVarname();
-				} catch (Exception e) {
-					throw new RuntimeException("GROUPBYS option should be in the form: targetColumn=aggFormulaOnSourceColumn", e);
+			} else {
+				for (int i = 0; i < groupByNodes.getColumnsCount(); i++) {
+					Node col = groupByNodes.getColumnAt(i);
+					String targetName;
+					OperationNode op;
+					try {
+						op = (OperationNode) col;
+						VariableNode vn = (VariableNode) op.getLeft();
+						targetName = vn.getVarname();
+					} catch (Exception e) {
+						throw new RuntimeException("GROUPBYS option should be in the form: targetGroupByColumn=SourceGroupByColumn", e);
+					}
+					if (targetTable.getColumnNoThrow(targetName) == null)
+						throw new RuntimeException("GROUPBYS option has unknown assignment column: " + targetName);
+					groupBys[i] = sm.getSqlProcessor().getParser().toCalc(op.getRight(), context);
+					groupByTargets[i] = targetName;
+					if (!targetGroupBysVisited.add(targetName))
+						throw new RuntimeException("GROUPBYS option has duplicate target column definition: " + targetName);
 				}
-				if (targetTable.getColumnNoThrow(targetName) == null)
-					throw new RuntimeException("GROUPBYS option has unknown assignment column: " + targetName);
-				groupBys[i] = sm.getSqlProcessor().getParser().toCalc(op.getRight(), context);
-				groupByTargets[i] = targetName;
-				if (!targetGroupBysVisited.add(targetName))
-					throw new RuntimeException("GROUPBYS option has duplicate target column definition: " + targetName);
 			}
+			
 		}
 
 		final DerivedCellCalculator[] aggregates;
@@ -336,7 +347,7 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 		this.groupByCount = groupBys.length;
 		this.groupBySources = groupBys;
 		this.groupByTargets = groupByTargets;
-		this.groupByTargetPos = getPositions(targetTable, this.groupByTargets);
+		this.groupByTargetPos = implictGroupby ? new int[] {-1}  : getPositions(targetTable, this.groupByTargets);
 		this.tmpKey = new Object[this.groupByCount];
 		this.tmpOnUpdatingKey = new Object[this.groupByCount];
 
@@ -626,8 +637,10 @@ public class AmiTrigger_Aggregate extends AmiAbstractTrigger {
 		if (rac == null) {
 			AmiPreparedRow prep = targetTable.borrowPreparedRow();
 			prep.reset();
-			for (int n = 0; n < groupByCount; n++)
-				prep.putAt(this.groupByTargetPos[n], key[n]);
+			if(!implictGroupby) {
+				for (int n = 0; n < groupByCount; n++)
+					prep.putAt(this.groupByTargetPos[n], key[n]);
+			}
 			Object[] uv = new Object[aggregateCalcsUnderlyingCount];
 			AmiRowImpl targetRow;
 			if (this.aggregatesHaveState) {

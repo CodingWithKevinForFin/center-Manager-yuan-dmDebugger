@@ -15,7 +15,7 @@ public class AmiTriggerFactory_Aggregate implements AmiTriggerFactory {
 	private List<AmiFactoryOption> options = new ArrayList<AmiFactoryOption>();
 
 	public AmiTriggerFactory_Aggregate() {
-		options.add(new AmiFactoryOption("groupBys", String.class, true, ""));
+		options.add(new AmiFactoryOption("groupBys", String.class, false, ""));
 		options.add(new AmiFactoryOption("selects", String.class, true, ""));
 		options.add(new AmiFactoryOption("allowExternalUpdates", Boolean.class, false, ""));
 	}
