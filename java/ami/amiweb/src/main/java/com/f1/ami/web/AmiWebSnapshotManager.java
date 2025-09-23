@@ -281,6 +281,12 @@ public class AmiWebSnapshotManager implements BackendResponseListener {
 				String tableName = null;
 				String nodeName = null;
 				switch (type) {
+					case AmiConsts.TYPE_DATASOURCE:
+						nodeName = (String) f.getValue("NM");
+						String ad = (String) f.getValue("AD");
+						if("AMIDB".equals(ad))
+							gm.onAmiCenterEntityAdded(AmiConsts.TYPE_DATASOURCE, nodeName, null, false);
+						break;
 					case AmiConsts.TYPE_CENTER:
 						nodeName = (String) f.getValue("CenterName");// + "_" + (String) f.getValue("Url");
 						String status = (String) f.getValue("Status");

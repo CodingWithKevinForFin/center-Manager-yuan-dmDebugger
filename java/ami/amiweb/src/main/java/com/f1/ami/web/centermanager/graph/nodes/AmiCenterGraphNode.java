@@ -9,6 +9,7 @@ public interface AmiCenterGraphNode {
 	public byte TYPE_METHOD = 5;
 	public byte TYPE_DBO = 6;
 	public byte TYPE_INDEX = 7;
+	public byte TYPE_DATASOURCE = 8;
 
 	public String getLabel();
 	public String getEscapedLabel();

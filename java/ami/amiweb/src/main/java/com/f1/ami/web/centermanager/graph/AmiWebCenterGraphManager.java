@@ -21,6 +21,7 @@ import com.f1.ami.web.AmiWebRealtimeObjectManager;
 import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Center;
+import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Datasource;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Dbo;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Index;
 import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode_Method;
@@ -47,6 +48,19 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	private MapInMap<AmiCenterGraphNode_Center, String, AmiCenterGraphNode_Table> externalTableNodes = new MapInMap<AmiCenterGraphNode_Center, String, AmiCenterGraphNode_Table>();
 	private AmiWebCenterGraphListener listeners[] = EMPTY;
 	private Map<String, AmiCenterGraphNode_Center> centerNodes = new HashMap<String, AmiCenterGraphNode_Center>();
+	private Map<String, AmiCenterGraphNode_Datasource> dsNodes = new HashMap<String, AmiCenterGraphNode_Datasource>();
+	
+	//dsname, name, node
+	private MapInMap<String, String, AmiCenterGraphNode_Table> dsDependencyByName_Table = new MapInMap<String, String, AmiCenterGraphNode_Table>();
+	private MapInMap<String, String, AmiCenterGraphNode_Trigger> dsDependencyByName_Trigger = new MapInMap<String, String, AmiCenterGraphNode_Trigger>();
+	private MapInMap<String, String, AmiCenterGraphNode_Timer> dsDependencyByName_Timer = new MapInMap<String, String, AmiCenterGraphNode_Timer>();
+	private MapInMap<String, String, AmiCenterGraphNode_Procedure> dsDependencyByName_Procedure = new MapInMap<String, String, AmiCenterGraphNode_Procedure>();
+	private MapInMap<String, String, AmiCenterGraphNode_Index> dsDependencyByName_Index = new MapInMap<String, String, AmiCenterGraphNode_Index>();
+	private MapInMap<String, String, AmiCenterGraphNode_Dbo> dsDependencyByName_Dbo = new MapInMap<String, String, AmiCenterGraphNode_Dbo>();
+	private MapInMap<String, String, AmiCenterGraphNode_Method> dsDependencyByName_Method = new MapInMap<String, String, AmiCenterGraphNode_Method>();
+	private MapInMap<String, String, AmiCenterGraphNode_Datasource> dsDependencyByName_Datasource = new MapInMap<String, String, AmiCenterGraphNode_Datasource>();
+	private MapInMap<String, String, AmiCenterGraphNode_Center> dsDependencyByName_Center = new MapInMap<String, String, AmiCenterGraphNode_Center>();
+	
 	private Map<String, AmiCenterGraphNode_Table> tableNodes = new HashMap<String, AmiCenterGraphNode_Table>();
 	private Map<String, AmiCenterGraphNode_Dbo> dboNodes = new HashMap<String, AmiCenterGraphNode_Dbo>();
 	private Map<String, AmiCenterGraphNode_Index> indexNodes = new HashMap<String, AmiCenterGraphNode_Index>();
@@ -65,6 +79,32 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 
 	private long nextUid() {
 		return this.nextUid++;
+	}
+	
+	public void putDependency(String dsName, byte type, String nodeName, AmiCenterGraphNode node) {
+			switch(type) {
+				case AmiCenterGraphNode_Table.CODE:
+					dsDependencyByName_Table.putMulti(dsName, nodeName, (AmiCenterGraphNode_Table) node);
+					break;
+				case AmiCenterGraphNode_Trigger.CODE:
+					dsDependencyByName_Trigger.putMulti(dsName, nodeName, (AmiCenterGraphNode_Trigger) node);
+					break;
+				case AmiCenterGraphNode_Timer.CODE:
+					dsDependencyByName_Timer.putMulti(dsName, nodeName, (AmiCenterGraphNode_Timer) node);
+					break;
+				case AmiCenterGraphNode_Procedure.CODE:
+					dsDependencyByName_Procedure.putMulti(dsName, nodeName, (AmiCenterGraphNode_Procedure) node);
+					break;
+				case AmiCenterGraphNode_Method.CODE:
+					dsDependencyByName_Method.putMulti(dsName, nodeName, (AmiCenterGraphNode_Method) node);
+					break;
+				case AmiCenterGraphNode_Index.CODE:
+					dsDependencyByName_Index.putMulti(dsName, nodeName, (AmiCenterGraphNode_Index) node);
+					break;
+				case AmiCenterGraphNode_Dbo.CODE:
+					dsDependencyByName_Dbo.putMulti(dsName, nodeName, (AmiCenterGraphNode_Dbo) node);
+					break;
+			}
 	}
 
 	public void debug() {
@@ -111,6 +151,9 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 		}
 		AmiCenterGraphNode n = null;
 		switch (nodeType) {
+			case AmiConsts.TYPE_DATASOURCE:
+				getOrCreateDatasource(nodeName);
+				break;
 			case AmiConsts.TYPE_CENTER:
 				getOrCreateCenter(nodeName, (byte) correlationData, readonly);
 				break;
@@ -169,6 +212,14 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 
 	public AmiCenterGraphNode_Index getIndex(String nodeName) {
 		AmiCenterGraphNode_Index n = this.indexNodes.get(nodeName);
+		if (n == null) {
+			throw new NullPointerException();
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Datasource getDatasource(String nodeName) {
+		AmiCenterGraphNode_Datasource n = this.dsNodes.get(nodeName);
 		if (n == null) {
 			throw new NullPointerException();
 		}
@@ -306,6 +357,15 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 		}
 		return n;
 	}
+	
+	private AmiCenterGraphNode_Datasource getOrCreateDatasource(String nodeName) {
+		AmiCenterGraphNode_Datasource n = this.dsNodes.get(nodeName);
+		if (n == null) {
+			this.dsNodes.put(nodeName, n = new AmiCenterGraphNode_Datasource(this, nextUid(), nodeName));
+			fireAdded(n);
+		}
+		return n;
+	}
 
 	private AmiCenterGraphNode_Center getOrCreateCenter(String nodeName, byte status, boolean readonly) {
 		AmiCenterGraphNode_Center n = this.centerNodes.get(nodeName);
@@ -333,6 +393,141 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 		}
 		return n;
 	}
+	
+	public AmiCenterGraphNode_Table getOrCreateTableForExternalDs(String ds, String nodeName, boolean readonly) {
+		AmiCenterGraphNode_Table n = (AmiCenterGraphNode_Table)this.dsDependencyByName_Table.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Table.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Table(this, nextUid(), nodeName, readonly));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Method getOrCreateMethodForExternalDs(String ds, String nodeName, boolean readonly) {
+		AmiCenterGraphNode_Method n = (AmiCenterGraphNode_Method)this.dsDependencyByName_Method.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Method.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Method(this, nextUid(), nodeName, readonly));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Trigger getOrCreateTriggerForExternalDs(String ds, String triggerType, String nodeName, String[] tableNames, boolean readonly) {	
+		AmiCenterGraphNode_Trigger n = (AmiCenterGraphNode_Trigger)this.dsDependencyByName_Trigger.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Trigger.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Trigger(this, nextUid(), nodeName, readonly));
+			short triggerTypeCode = AmiCenterManagerUtils.centerObjectTypeToCode(AmiCenterGraphNode.TYPE_TRIGGER, triggerType);
+			n.setTriggerType(triggerTypeCode);
+			for (int i = 0; i < tableNames.length; i++) {
+				String name = tableNames[i];
+				AmiCenterGraphNode_Table owner = getOrCreateTableForExternalDs(ds, name, false);
+				//deprecate these****
+				owner.bindTargetTrigger(nodeName, n);
+				n.setBindingTable(owner);
+				//********	
+			}
+
+				//add
+				switch (triggerTypeCode) {
+					//1 source, 1 sink
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_AGGREGATE:
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_DECORATE:
+						AmiCenterGraphNode_Table source = getOrCreateTableForExternalDs(ds, tableNames[0], false);
+						AmiCenterGraphNode_Table sink = getOrCreateTableForExternalDs(ds, tableNames[1], false);
+						source.addOutboundTrigger(n);
+						sink.addInboundTrigger(n);
+						n.addSourceTable(source);
+						n.addSinkTable(sink);
+						break;
+					//2 source, 1 sink
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_JOIN:
+						AmiCenterGraphNode_Table left = getOrCreateTableForExternalDs(ds, tableNames[0], false);
+						AmiCenterGraphNode_Table right = getOrCreateTableForExternalDs(ds, tableNames[1], false);
+						AmiCenterGraphNode_Table target = getOrCreateTableForExternalDs(ds, tableNames[2], false);
+						left.addOutboundTrigger(n);
+						right.addOutboundTrigger(n);
+						target.addInboundTrigger(n);
+						n.addSourceTable(left);
+						n.addSourceTable(right);
+						n.addSinkTable(target);
+						break;
+					//multiple sources, 1 sink
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_PROJECTION:
+						AmiCenterGraphNode_Table destin = getOrCreateTableForExternalDs(ds, tableNames[tableNames.length - 1], false);
+						destin.addInboundTrigger(n);
+						n.addSinkTable(destin);
+						for (int i = 0; i < tableNames.length - 1; i++) {
+							AmiCenterGraphNode_Table src = getOrCreateTableForExternalDs(ds, tableNames[i], false);
+							src.addOutboundTrigger(n);
+							n.addSourceTable(src);
+						}
+						break;
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_AMISCRIPT:
+					case AmiCenterEntityConsts.TRIGGER_TYPE_CODE_RELAY:
+	
+				fireAdded(n);
+			}
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Procedure getOrCreateProcedureForExternalDs(String ds, String nodeName, boolean readonly) {
+		AmiCenterGraphNode_Procedure n = (AmiCenterGraphNode_Procedure)this.dsDependencyByName_Procedure.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Procedure.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Procedure(this, nextUid(), nodeName, readonly));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Timer getOrCreateTimerForExternalDs(String ds, String nodeName, boolean readonly) {
+		AmiCenterGraphNode_Timer n = (AmiCenterGraphNode_Timer)this.dsDependencyByName_Timer.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Timer.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Timer(this, nextUid(), nodeName, readonly));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Index getOrCreateIndexForExternalDs(String ds, String nodeName, String tableName, boolean readonly) {
+		AmiCenterGraphNode_Index n = (AmiCenterGraphNode_Index)this.dsDependencyByName_Index.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Index.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Index(this, nextUid(), nodeName, readonly));
+			AmiCenterGraphNode_Table owner = getOrCreateTableForExternalDs(ds, tableName, readonly);
+			owner.bindTargetIndex(AmiCenterManagerUtils.formatIndexNames(tableName, nodeName), n);
+			n.setBindingTable(owner);
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Dbo getOrCreateDboForExternalDs(String ds, String nodeName, boolean readonly) {
+		AmiCenterGraphNode_Dbo n = (AmiCenterGraphNode_Dbo)this.dsDependencyByName_Dbo.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Dbo.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Dbo(this, nextUid(), nodeName, readonly));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Datasource getOrCreateDatasourceForExternalDs(String ds, String nodeName) {
+		AmiCenterGraphNode_Datasource n = (AmiCenterGraphNode_Datasource)this.dsDependencyByName_Datasource.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Datasource.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Datasource(this, nextUid(), nodeName));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
+	public AmiCenterGraphNode_Center getOrCreateCenterForExternalDs(String ds, byte status, String nodeName) {
+		AmiCenterGraphNode_Center n = (AmiCenterGraphNode_Center)this.dsDependencyByName_Center.getMulti(ds, nodeName);
+		if (n == null) {
+			this.dsDependencyByName_Center.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Center(this, nextUid(), nodeName, status));
+			fireAdded(n);
+		}
+		return n;
+	}
+	
 
 	//TODO: A better way to do it? Only method nodes are allowed to be created from outside of this class(in AmiWebCenterManagerPortlet by querying the backend)
 	public AmiCenterGraphNode_Method getOrCreateMethod(String nodeName, boolean readonly) {
