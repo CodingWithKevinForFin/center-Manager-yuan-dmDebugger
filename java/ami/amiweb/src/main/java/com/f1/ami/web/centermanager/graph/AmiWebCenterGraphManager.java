@@ -397,7 +397,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Table getOrCreateTableForExternalDs(String ds, String nodeName, boolean readonly) {
 		AmiCenterGraphNode_Table n = (AmiCenterGraphNode_Table)this.dsDependencyByName_Table.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Table.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Table(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Table.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Table(this, nextUid(), nodeName, readonly, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -406,7 +406,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Method getOrCreateMethodForExternalDs(String ds, String nodeName, boolean readonly) {
 		AmiCenterGraphNode_Method n = (AmiCenterGraphNode_Method)this.dsDependencyByName_Method.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Method.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Method(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Method.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Method(this, nextUid(), nodeName, readonly, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -415,7 +415,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Trigger getOrCreateTriggerForExternalDs(String ds, String triggerType, String nodeName, String[] tableNames, boolean readonly) {	
 		AmiCenterGraphNode_Trigger n = (AmiCenterGraphNode_Trigger)this.dsDependencyByName_Trigger.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Trigger.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Trigger(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Trigger.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Trigger(this, nextUid(), nodeName, readonly, ds));
 			short triggerTypeCode = AmiCenterManagerUtils.centerObjectTypeToCode(AmiCenterGraphNode.TYPE_TRIGGER, triggerType);
 			n.setTriggerType(triggerTypeCode);
 			for (int i = 0; i < tableNames.length; i++) {
@@ -474,7 +474,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Procedure getOrCreateProcedureForExternalDs(String ds, String nodeName, boolean readonly) {
 		AmiCenterGraphNode_Procedure n = (AmiCenterGraphNode_Procedure)this.dsDependencyByName_Procedure.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Procedure.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Procedure(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Procedure.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Procedure(this, nextUid(), nodeName, readonly, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -483,7 +483,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Timer getOrCreateTimerForExternalDs(String ds, String nodeName, boolean readonly) {
 		AmiCenterGraphNode_Timer n = (AmiCenterGraphNode_Timer)this.dsDependencyByName_Timer.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Timer.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Timer(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Timer.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Timer(this, nextUid(), nodeName, readonly, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -492,7 +492,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Index getOrCreateIndexForExternalDs(String ds, String nodeName, String tableName, boolean readonly) {
 		AmiCenterGraphNode_Index n = (AmiCenterGraphNode_Index)this.dsDependencyByName_Index.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Index.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Index(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Index.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Index(this, nextUid(), AmiCenterManagerUtils.formatIndexNames(tableName, nodeName), readonly, ds));
 			AmiCenterGraphNode_Table owner = getOrCreateTableForExternalDs(ds, tableName, readonly);
 			owner.bindTargetIndex(AmiCenterManagerUtils.formatIndexNames(tableName, nodeName), n);
 			n.setBindingTable(owner);
@@ -504,7 +504,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Dbo getOrCreateDboForExternalDs(String ds, String nodeName, boolean readonly) {
 		AmiCenterGraphNode_Dbo n = (AmiCenterGraphNode_Dbo)this.dsDependencyByName_Dbo.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Dbo.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Dbo(this, nextUid(), nodeName, readonly));
+			this.dsDependencyByName_Dbo.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Dbo(this, nextUid(), nodeName, readonly, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -513,7 +513,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Datasource getOrCreateDatasourceForExternalDs(String ds, String nodeName) {
 		AmiCenterGraphNode_Datasource n = (AmiCenterGraphNode_Datasource)this.dsDependencyByName_Datasource.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Datasource.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Datasource(this, nextUid(), nodeName));
+			this.dsDependencyByName_Datasource.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Datasource(this, nextUid(), nodeName, ds));
 			fireAdded(n);
 		}
 		return n;
@@ -522,7 +522,7 @@ public class AmiWebCenterGraphManager implements AmiWebCenterEntityListener, Ami
 	public AmiCenterGraphNode_Center getOrCreateCenterForExternalDs(String ds, byte status, String nodeName) {
 		AmiCenterGraphNode_Center n = (AmiCenterGraphNode_Center)this.dsDependencyByName_Center.getMulti(ds, nodeName);
 		if (n == null) {
-			this.dsDependencyByName_Center.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Center(this, nextUid(), nodeName, status));
+			this.dsDependencyByName_Center.putMulti(ds, nodeName, n = new AmiCenterGraphNode_Center(this, nextUid(), nodeName, status, ds));
 			fireAdded(n);
 		}
 		return n;

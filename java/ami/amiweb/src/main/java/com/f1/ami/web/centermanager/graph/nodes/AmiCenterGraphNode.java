@@ -16,4 +16,7 @@ public interface AmiCenterGraphNode {
 	public long getUid();
 	public byte getType();
 	public boolean isReadonly();
+	
+	public boolean isFromExternalDs();
+	public String getExternalDsName();
 }

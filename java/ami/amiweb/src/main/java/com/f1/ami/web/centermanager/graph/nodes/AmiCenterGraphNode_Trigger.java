@@ -20,7 +20,16 @@ public class AmiCenterGraphNode_Trigger extends AmiCenterGraphAbstractNode {
 	public AmiCenterGraphNode_Trigger(AmiWebCenterGraphManager manager, long uid, String label) {
 		super(manager, uid, label);
 	}
-
+	
+	public AmiCenterGraphNode_Trigger(AmiWebCenterGraphManager manager, long uid, String label, String externalDsName) {
+		super(manager, uid, label, externalDsName);
+	}
+	
+	public AmiCenterGraphNode_Trigger(AmiWebCenterGraphManager manager, long uid, String label, boolean readOnly, String externalDsName) {
+		this(manager, uid, label, externalDsName);
+		this.readOnly = readOnly;
+	}
+	
 	public AmiCenterGraphNode_Trigger(AmiWebCenterGraphManager manager, long uid, String label, boolean readOnly) {
 		this(manager, uid, label);
 		this.readOnly = readOnly;

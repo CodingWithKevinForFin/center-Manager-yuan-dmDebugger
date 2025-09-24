@@ -17,6 +17,11 @@ public class AmiCenterGraphNode_Center extends AmiCenterGraphAbstractNode {
 		this(manager, uid, label, status);
 		this.readOnly = readOnly;
 	}
+	
+	public AmiCenterGraphNode_Center(AmiWebCenterGraphManager manager, long uid, String label, byte status, String externalDsName) {
+		super(manager, uid, label, externalDsName);
+		this.status = status;
+	}
 
 	@Override
 	public byte getType() {

@@ -8,6 +8,11 @@ public class AmiCenterGraphNode_Datasource extends AmiCenterGraphAbstractNode {
 	public AmiCenterGraphNode_Datasource(AmiWebCenterGraphManager manager, long uid, String label) {
 		super(manager, uid, label);
 	}
+	
+	public AmiCenterGraphNode_Datasource(AmiWebCenterGraphManager manager, long uid, String label, String externalDsName) {
+		super(manager, uid, label, externalDsName);
+	}
+
 
 	@Override
 	public byte getType() {

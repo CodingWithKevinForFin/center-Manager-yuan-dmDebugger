@@ -6,6 +6,8 @@ import com.f1.ami.web.centermanager.graph.AmiWebCenterGraphManager;
 
 
 public class AmiCenterGraphAbstractNode implements AmiCenterGraphNode {
+	protected boolean fromExternalDs = false;
+	protected String externalDsName;
 	protected String label;
 	protected boolean readOnly = false;
 	final private AmiWebCenterGraphManager manager;
@@ -16,6 +18,24 @@ public class AmiCenterGraphAbstractNode implements AmiCenterGraphNode {
 		this.manager = manager;
 		this.uid = uid;
 		this.label = label;
+	}
+	
+	public AmiCenterGraphAbstractNode(AmiWebCenterGraphManager manager, long uid, String label, String externalDsName) {
+		this.manager = manager;
+		this.uid = uid;
+		this.label = externalDsName + "." + label;
+		this.externalDsName = externalDsName;
+		this.fromExternalDs = true;
+	}
+	
+	@Override
+	public boolean isFromExternalDs() {
+		return this.fromExternalDs;
+	}
+	
+	@Override
+	public String getExternalDsName() {
+		return this.externalDsName;
 	}
 
 	@Override

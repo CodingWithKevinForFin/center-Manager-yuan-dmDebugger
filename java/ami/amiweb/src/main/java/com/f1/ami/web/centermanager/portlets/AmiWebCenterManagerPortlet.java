@@ -346,6 +346,9 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	private WebTreeNode createNode(WebTreeNode parent, AmiCenterGraphNode node) {
 		String icon = getIcon(node);
 		String label = node.getLabel();
+		if(node.isFromExternalDs()) {
+			label = SH.afterFirst(label, node.getExternalDsName() + ".");
+		}
 		//		String desc = node.getDescription();
 		//		if (SH.is(desc))
 		//			label += " (" + desc + ")";
