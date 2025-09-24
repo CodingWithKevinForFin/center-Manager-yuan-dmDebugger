@@ -22,6 +22,8 @@ public class AmiCenterManagerSmartGraphMenu {
 	public static BasicWebMenu createContextMenu(AmiWebService service, List<AmiCenterGraphNode> selectedNodesList, boolean allowModification) {
 		BasicWebMenu menu = new BasicWebMenu();
 		int selectedCount = selectedNodesList.size();
+		if(selectedCount == 0)
+			return null;
 		String nodeName = selectedNodesList.get(0).getLabel();
 		//switch on selected cnt
 		if (selectedCount == 1) {
