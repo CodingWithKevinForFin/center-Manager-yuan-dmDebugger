@@ -322,6 +322,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		AmiWebGraphManager gm = this.service.getGraphManager();
 		// reset state, will clear all selected
 		this.tree.clear();
+		this.categoryNodesForExternalDs.clear();
 		this.nodesByGraphId.clear();
 		// initialize node collections
 		this.treeNodeCurCenter = createNode(this.tree.getRoot(), "Current Center", AmiWebConsts.CENTER_GRAPH_NODE_CENTER, null);
