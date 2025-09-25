@@ -158,6 +158,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	public static final String ID_DBO = "DBOS";
 
 	private final Object dbsemephore = new Object();
+	public volatile boolean isDeferredQueryFinished = false;
 	//tree state copier,
 	TreeStateCopier tsc = null;
 
@@ -270,6 +271,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		for(Integer b: ALL_TYPES)
 			initDbObjectNode(dsName, sb, b);
 		prepareRequestToBackend(sb.toString());
+		
 	}
 	
 	
@@ -514,40 +516,34 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 
 	@Override
 	public WebMenu createMenu(FastWebTree fastWebTree, List<WebTreeNode> selected) {
+		BasicWebMenu menu = new BasicWebMenu();
+		menu.addChild(new BasicWebMenuLink("Refresh", true, "refresh"));
 		if (selected.size() == 1) {
 			WebTreeNode t = selected.get(0);
 			if (t == this.treeNodeCurCenter || this.externalCenterTreeNodesByName.containsValue(t)) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Center", true, "add_center"));
 				if (this.externalCenterTreeNodesByName.containsValue(t))
 					menu.addChild(new BasicWebMenuLink("Remove Center", true, "delete_center"));
 				return menu;
 			} else if (t == this.treeNodeTables && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Table", true, "add_table"));
 				return menu;
 			} else if (t == this.treeNodeTriggers && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Trigger", true, "add_trigger"));
 				return menu;
 			} else if (t == this.treeNodeTimers && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Timer", true, "add_timer"));
 				return menu;
 			} else if (t == this.treeNodeProcedures && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Procedure", true, "add_procedure"));
 				return menu;
 			} else if (t == this.treeNodeIndexes && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Index", true, "add_index"));
 				return menu;
 			} else if (t == this.treeNodeMethods && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Method", true, "add_method"));
 				return menu;
 			} else if (t == this.treeNodeDBOs && allowModification) {
-				BasicWebMenu menu = new BasicWebMenu();
 				menu.addChild(new BasicWebMenuLink("Add Dbo", true, "add_dbo"));
 				return menu;
 			}
@@ -560,7 +556,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				return null;
 			nodes2.add(n);
 		}
-		BasicWebMenu menu = AmiCenterManagerSmartGraphMenu.createContextMenu(service, nodes2, this.allowModification);
+		AmiCenterManagerSmartGraphMenu.createContextMenu(menu, service, nodes2, this.allowModification);
 		return menu;
 	}
 
@@ -693,6 +689,10 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			AmiCenterGraphNode data2 = getData(data);
 			if (data2 != null)
 				nodes.add(data2);
+		}
+		if("refresh".equals(action)) {
+			buildNodes();
+			return;
 		}
 		if (SH.startsWith(action, "add")) {
 			AmiCenterManagerSmartGraphMenu.onMenuItemAddAction(service, action);
@@ -1172,7 +1172,11 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 						}
 
 					}
-
+					if(!"AMI".equals(ds)) {
+						isDeferredQueryFinished = true;
+					}else {
+						System.out.println("AMI ds");
+					}
 				} else if (tables.size() == 1 && query.contains("DESCRIBE")) {
 					//describe [entity] [entity_name]
 					

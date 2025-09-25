@@ -469,7 +469,8 @@ public class AmiCenterManagerSmartGraph implements GraphListener, GraphContextMe
 				return;
 			nodes2.add(n);
 		}
-		BasicWebMenu menu = AmiCenterManagerSmartGraphMenu.createContextMenu(this.service, nodes2, this.allowModification);
+		BasicWebMenu menu = new BasicWebMenu();
+		AmiCenterManagerSmartGraphMenu.createContextMenu(menu, this.service, nodes2, this.allowModification);
 		if (menu != null)
 			service.getPortletManager().showContextMenu(menu, this);
 	}

@@ -9,6 +9,7 @@ import com.f1.ami.web.centermanager.graph.nodes.AmiCenterGraphNode;
 import com.f1.ami.web.dm.AmiWebDm;
 import com.f1.base.Action;
 import com.f1.container.ResultMessage;
+import com.f1.suite.web.menu.WebMenu;
 import com.f1.suite.web.menu.impl.BasicWebMenu;
 import com.f1.suite.web.menu.impl.BasicWebMenuLink;
 import com.f1.suite.web.portal.BackendResponseListener;
@@ -19,8 +20,7 @@ import com.f1.suite.web.portal.impl.ConfirmDialogPortlet;
 
 public class AmiCenterManagerSmartGraphMenu {
 
-	public static BasicWebMenu createContextMenu(AmiWebService service, List<AmiCenterGraphNode> selectedNodesList, boolean allowModification) {
-		BasicWebMenu menu = new BasicWebMenu();
+	public static BasicWebMenu createContextMenu(BasicWebMenu menu, AmiWebService service, List<AmiCenterGraphNode> selectedNodesList, boolean allowModification) {
 		int selectedCount = selectedNodesList.size();
 		if(selectedCount == 0)
 			return null;
