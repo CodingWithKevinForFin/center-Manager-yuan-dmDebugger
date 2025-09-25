@@ -832,6 +832,12 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 					if (t2 != null)
 						origNodes.add((AmiCenterGraphNode) t2);
 				}
+			} else if(t == null && ("Tables".equals(i.getName()) || "Triggers".equals(i.getName()))) {
+				for (WebTreeNode j : i.getChildren()) {
+					Object t2 = j.getData();
+					if (t2 != null)
+						origNodes.add((AmiCenterGraphNode) t2);
+				}
 			}
 		}
 		this.smartGraph.buildGraph(origNodes, allSelected);
