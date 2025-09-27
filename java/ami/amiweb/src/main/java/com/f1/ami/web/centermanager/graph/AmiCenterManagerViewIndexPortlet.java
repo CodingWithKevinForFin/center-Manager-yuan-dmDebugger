@@ -54,12 +54,13 @@ public class AmiCenterManagerViewIndexPortlet extends GridPortlet implements Web
 	private FormPortlet form;
 	private WebTreeNode rootNode;
 	private DividerPortlet viewDataDivider;
+	private final FormPortletButton closeButton;
 
 	public AmiCenterManagerViewIndexPortlet(PortletConfig config, AmiCenterGraphNode_Table node) {
 		super(config);
 		this.service = AmiWebUtils.getService(config.getPortletManager());
 		this.form = new FormPortlet(generateConfig());
-		form.addButton(new FormPortletButton("Close"));
+		this.closeButton = form.addButton(new FormPortletButton("Close"));
 		form.addFormPortletListener(this);
 		this.indexTree = new FastTreePortlet(generateConfig());
 		this.indexTree.addOption(FastTreePortlet.OPTION_SEARCH_BUTTONS_COLOR, "#007608");
@@ -137,7 +138,8 @@ public class AmiCenterManagerViewIndexPortlet extends GridPortlet implements Web
 
 	@Override
 	public void onButtonPressed(FormPortlet portlet, FormPortletButton button) {
-		// TODO Auto-generated method stub
+		if(button == this.closeButton)
+			close();
 
 	}
 
