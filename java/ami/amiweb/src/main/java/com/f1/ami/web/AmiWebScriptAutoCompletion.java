@@ -368,7 +368,10 @@ public class AmiWebScriptAutoCompletion implements WebMenuListener {
 			} else {
 				//Hint on static Function contents
 				List<MethodFactory> sink = new ArrayList<MethodFactory>();
-				scriptManager.getMethodFactory().getAllMethodFactories(sink);
+				if(scope == AmiWebFormPortletAmiScriptField.LANGUAGE_SCOPE_WEB_SCRIPT)
+					scriptManager.getMethodFactory().getAllMethodFactories(sink);
+				else
+					centerScriptManager.getMethodFactory().getAllMethodFactories(sink);
 				for (MethodFactory i : sink) {
 					if (i instanceof AmiWebDeclaredMethodFactory)
 						continue;//skip custom methods
