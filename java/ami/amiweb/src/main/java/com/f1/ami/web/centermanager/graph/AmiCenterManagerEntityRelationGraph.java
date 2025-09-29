@@ -316,8 +316,8 @@ public class AmiCenterManagerEntityRelationGraph implements GraphListener, Graph
 					Node sourceTrigger = graphNodes.get(inboundTrigger.getUid());
 					if (!hasEdge(sourceTrigger, targetTable))
 						addDataEdge(sourceTrigger, targetTable);
-					if (inboundTrigger.getTriggerType() == AmiCenterEntityConsts.TRIGGER_TYPE_CODE_JOIN)
-						addSourceTableLinkForJoinTrigger(inboundTrigger);
+//					if (inboundTrigger.getTriggerType() == AmiCenterEntityConsts.TRIGGER_TYPE_CODE_JOIN)
+//						addSourceTableLinkForJoinTrigger(inboundTrigger);
 					for (AmiCenterGraphNode_Table t : inboundTrigger.getSourceTables()) {
 						Node sourceTableNode = graphNodes.get(t.getUid());
 						if (!hasEdge(sourceTableNode, sourceTrigger))
@@ -334,8 +334,8 @@ public class AmiCenterManagerEntityRelationGraph implements GraphListener, Graph
 					Node targetTrigger = graphNodes.get(outboundTrigger.getUid());
 					if (!hasEdge(sourceTable, targetTrigger))
 						addDataEdge(sourceTable, targetTrigger);
-					if (outboundTrigger.getTriggerType() == AmiCenterEntityConsts.TRIGGER_TYPE_CODE_JOIN)
-						addSourceTableLinkForJoinTrigger(outboundTrigger);
+//					if (outboundTrigger.getTriggerType() == AmiCenterEntityConsts.TRIGGER_TYPE_CODE_JOIN)
+//						addSourceTableLinkForJoinTrigger(outboundTrigger);
 					for (AmiCenterGraphNode_Table t : outboundTrigger.getSinkTables()) {
 						Node sourceTriggerNode = graphNodes.get(outboundTrigger.getUid());
 						Node targetTable = graphNodes.get(t.getUid());
