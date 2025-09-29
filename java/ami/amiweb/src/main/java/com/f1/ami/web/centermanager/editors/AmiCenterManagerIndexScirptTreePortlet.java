@@ -32,6 +32,7 @@ import com.f1.container.ResultMessage;
 import com.f1.suite.web.fastwebcolumns.FastWebColumns;
 import com.f1.suite.web.menu.WebMenu;
 import com.f1.suite.web.menu.impl.BasicWebMenu;
+import com.f1.suite.web.menu.impl.BasicWebMenuLink;
 import com.f1.suite.web.portal.Portlet;
 import com.f1.suite.web.portal.PortletConfig;
 import com.f1.suite.web.portal.PortletManager;
@@ -52,6 +53,7 @@ import com.f1.suite.web.portal.impl.form.FormPortletListener;
 import com.f1.suite.web.portal.impl.form.FormPortletSelectField;
 import com.f1.suite.web.portal.impl.form.FormPortletTextField;
 import com.f1.suite.web.portal.style.PortletStyleManager_Dialog;
+import com.f1.suite.web.tree.WebTreeContextMenuFactory;
 import com.f1.suite.web.tree.WebTreeContextMenuListener;
 import com.f1.suite.web.tree.WebTreeNode;
 import com.f1.suite.web.tree.impl.FastWebTree;
@@ -65,8 +67,8 @@ import com.f1.utils.structs.Tuple2;
 import com.f1.utils.structs.table.SmartTable;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
 
-public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implements Comparator<WebTreeNode>, WebTreeContextMenuListener, FormPortletContextMenuFactory,
-		FormPortletListener, FormPortletContextMenuListener, TreeStateCopierIdGetter {
+public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implements Comparator<WebTreeNode>, WebTreeContextMenuListener,
+		FormPortletListener, WebTreeContextMenuFactory, FormPortletContextMenuListener, TreeStateCopierIdGetter {
 	//create index myindex on accounts(id hash) use constraint="";
 	public static final String DEFAULT_DS_NAME = "AMI";
 	public static final byte DEFAULT_PERMISSION = (byte) 15;
@@ -87,13 +89,17 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 	final private InnerPortlet indexEditorPanel;
 	final private HtmlPortlet blankPreview;
     final private AmiCenterManagerEditIndexPortlet indexEditor;
+    final private String tableName;
+    final private AmiWebService service;
 
 	private WebTreeNode treeNodeIndexes;
 
-	public AmiCenterManagerIndexScirptTreePortlet(PortletConfig config, Map<String, AmiCenterGraphNode_Index> indexBinding, String sql, TabPortlet owningTab) {
+	public AmiCenterManagerIndexScirptTreePortlet(PortletConfig config, Map<String, AmiCenterGraphNode_Index> indexBinding, String sql, TabPortlet owningTab, String tableName) {
 		super(config);
+		this.service = AmiWebUtils.getService(getManager());
 		this.owningTab = owningTab;
 		this.blankPreview = new HtmlPortlet(generateConfig());
+		this.tableName = tableName;
 		
 		this.divider = new DividerPortlet(generateConfig(), true);
 		this.divider.setOffsetFromTopPx(300);
@@ -106,6 +112,7 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		this.tree.setFormStyle(AmiWebUtils.getService(getManager()).getUserFormStyleManager());
 		this.tree.setDialogStyle(AmiWebUtils.getService(getManager()).getUserDialogStyleManager());
 		this.tree.getTree().setRootLevelVisible(false);
+		this.tree.getTree().setContextMenuFactory(this);
 		
 		buildTree(indexBinding);
 		
@@ -194,13 +201,13 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 		// TODO Auto-generated method stub
 
 	}
-	@Override
-	public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
-		return null;
-	}
+	
 	@Override
 	public void onContextMenu(FastWebTree tree, String action) {
-		// TODO Auto-generated method stub
+		if("add_index".equals(action)) {
+			AmiCenterManagerEditIndexPortlet editor = (AmiCenterManagerEditIndexPortlet) service.getAmiCenterManagerEditorsManager().showAddCenterObjectPortlet(AmiCenterGraphNode.TYPE_INDEX);
+			editor.setIndexOn(tableName);
+		}
 
 	}
 	@Override
@@ -272,5 +279,22 @@ public class AmiCenterManagerIndexScirptTreePortlet extends GridPortlet implemen
 	public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {
 		// TODO Auto-generated method stub
 		
+	}
+
+
+
+	@Override
+	public WebMenu createMenu(FastWebTree fastWebTree, List<WebTreeNode> selected) {
+		BasicWebMenu menu = new BasicWebMenu();
+		menu.addChild(new BasicWebMenuLink("Add Index", true, "add_index"));
+		return menu;
+	}
+
+
+
+	@Override
+	public boolean formatNode(WebTreeNode node, StringBuilder sink) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

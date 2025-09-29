@@ -582,6 +582,10 @@ public class AmiCenterManagerEditTriggerPortlet extends AmiCenterManagerAbstract
 			
 		return true;
 	}
+	
+	public void setTriggerOn(String name) {
+		this.triggerOnField.setValue(CH.s(name));
+	}
 
 	@Override
 	public void checkCanDropAndRecreate() {

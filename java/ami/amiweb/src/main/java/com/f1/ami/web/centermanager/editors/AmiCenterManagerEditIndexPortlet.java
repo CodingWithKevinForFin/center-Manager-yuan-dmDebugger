@@ -466,6 +466,12 @@ public class AmiCenterManagerEditIndexPortlet extends AmiCenterManagerAbstractEd
 		
 	}
 	
+	//used in indexTree.Note only the owner table of the rich table editor can be set on index on.
+	public void setIndexOn(String on) {
+		this.onField.setValue(CH.s(on));
+		this.onField.setDisabled(true);
+	}
+	
 	@Override
 	public void onBackendResponse(ResultMessage<Action> result) {
 		if (result.getError() != null) {

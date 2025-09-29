@@ -25,6 +25,8 @@ import com.f1.base.Table;
 import com.f1.container.ResultMessage;
 import com.f1.suite.web.fastwebcolumns.FastWebColumns;
 import com.f1.suite.web.menu.WebMenu;
+import com.f1.suite.web.menu.impl.BasicWebMenu;
+import com.f1.suite.web.menu.impl.BasicWebMenuLink;
 import com.f1.suite.web.portal.PortletConfig;
 import com.f1.suite.web.portal.impl.DividerPortlet;
 import com.f1.suite.web.portal.impl.FastTreePortlet;
@@ -36,6 +38,7 @@ import com.f1.suite.web.portal.impl.form.FormPortletContextMenuFactory;
 import com.f1.suite.web.portal.impl.form.FormPortletContextMenuListener;
 import com.f1.suite.web.portal.impl.form.FormPortletField;
 import com.f1.suite.web.portal.impl.form.FormPortletListener;
+import com.f1.suite.web.tree.WebTreeContextMenuFactory;
 import com.f1.suite.web.tree.WebTreeContextMenuListener;
 import com.f1.suite.web.tree.WebTreeNode;
 import com.f1.suite.web.tree.impl.FastWebTree;
@@ -45,8 +48,8 @@ import com.f1.utils.casters.Caster_String;
 import com.f1.utils.structs.LongKeyMap;
 import com.f1.utils.structs.table.derived.DerivedCellCalculator;
 
-public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implements Comparator<WebTreeNode>, WebTreeContextMenuListener, FormPortletContextMenuFactory,
-		FormPortletListener, FormPortletContextMenuListener, AmiWebCompilerListener, AmiWebDomObjectDependency {
+public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implements Comparator<WebTreeNode>, WebTreeContextMenuListener,
+		FormPortletListener, WebTreeContextMenuFactory, FormPortletContextMenuListener, AmiWebCompilerListener, AmiWebDomObjectDependency {
 	public static final String DEFAULT_DS_NAME = "AMI";
 	public static final byte DEFAULT_PERMISSION = (byte) 15;
 	//Backend config
@@ -59,6 +62,7 @@ public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implem
 	final private AmiWebService service;
 	final private DividerPortlet divider;
 	final private FastTreePortlet tree;
+	final private String tableName;
 	public HashMap<String, AmiCenterGraphNode_Trigger> triggerNodeByNames = new HashMap<String, AmiCenterGraphNode_Trigger>();
 
 	//form
@@ -69,17 +73,18 @@ public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implem
 
 	private WebTreeNode treeNodeTriggers;
 
-	public AmiCenterManagerTriggerScirptTreePortlet(PortletConfig config, Map<String, AmiCenterGraphNode_Trigger> triggerBinding) {
+	public AmiCenterManagerTriggerScirptTreePortlet(PortletConfig config, Map<String, AmiCenterGraphNode_Trigger> triggerBinding, String tableName) {
 		super(config);
 		this.service = AmiWebUtils.getService(getManager());
 		this.blankPreview = new HtmlPortlet(generateConfig());
-
+		this.tableName = tableName;
 		this.tree = new FastTreePortlet(generateConfig());
 		this.tree.getTree().setComparator(this);
 		this.tree.getTree().addMenuContextListener(this);
 		//add default form and dialog style for this.tree
 		this.tree.setFormStyle(AmiWebUtils.getService(getManager()).getUserFormStyleManager());
 		this.tree.setDialogStyle(AmiWebUtils.getService(getManager()).getUserDialogStyleManager());
+		this.tree.getTree().setContextMenuFactory(this);
 		this.tree.getTree().setRootLevelVisible(false);
 		buildTree(triggerBinding);
 
@@ -164,7 +169,10 @@ public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implem
 
 	@Override
 	public void onContextMenu(FastWebTree tree, String action) {
-		// TODO Auto-generated method stub
+		if("add_trigger".equals(action)) {
+			AmiCenterManagerEditTriggerPortlet editor = (AmiCenterManagerEditTriggerPortlet) service.getAmiCenterManagerEditorsManager().showAddCenterObjectPortlet(AmiCenterGraphNode.TYPE_TRIGGER);
+			editor.setTriggerOn(tableName);
+		}
 
 	}
 
@@ -330,10 +338,18 @@ public class AmiCenterManagerTriggerScirptTreePortlet extends GridPortlet implem
 
 	}
 
+
 	@Override
-	public WebMenu createMenu(FormPortlet formPortlet, FormPortletField<?> field, int cursorPosition) {
+	public WebMenu createMenu(FastWebTree fastWebTree, List<WebTreeNode> selected) {
+		BasicWebMenu menu = new BasicWebMenu();
+		menu.addChild(new BasicWebMenuLink("Add Trigger", true, "add_trigger"));
+		return menu;
+	}
+
+	@Override
+	public boolean formatNode(WebTreeNode node, StringBuilder sink) {
 		// TODO Auto-generated method stub
-		return null;
+		return false;
 	}
 
 }
