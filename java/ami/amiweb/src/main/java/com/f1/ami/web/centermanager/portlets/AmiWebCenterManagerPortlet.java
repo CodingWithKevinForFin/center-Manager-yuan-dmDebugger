@@ -6,6 +6,11 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import com.f1.ami.amicommon.AmiUtils;
 import com.f1.ami.amicommon.msg.AmiCenterQueryDsRequest;
@@ -22,7 +27,6 @@ import com.f1.ami.web.AmiWebFormula;
 import com.f1.ami.web.AmiWebService;
 import com.f1.ami.web.AmiWebSpecialPortlet;
 import com.f1.ami.web.AmiWebUtils;
-import com.f1.ami.web.centermanager.AmiCenterEntityConsts;
 import com.f1.ami.web.centermanager.AmiCenterManagerUtils;
 import com.f1.ami.web.centermanager.graph.AmiWebCenterGraphManager;
 import com.f1.ami.web.centermanager.graph.AmiCenterManagerEntityRelationGraph;
@@ -57,9 +61,15 @@ import com.f1.suite.web.portal.impl.ConfirmDialogListener;
 import com.f1.suite.web.portal.impl.DividerPortlet;
 import com.f1.suite.web.portal.impl.FastTreePortlet;
 import com.f1.suite.web.portal.impl.GridPortlet;
+import com.f1.suite.web.portal.impl.RootPortlet;
 import com.f1.suite.web.portal.impl.TabPortlet;
 import com.f1.suite.web.portal.impl.TreeStateCopier;
 import com.f1.suite.web.portal.impl.TreeStateCopierIdGetter;
+import com.f1.suite.web.portal.impl.form.FormPortlet;
+import com.f1.suite.web.portal.impl.form.FormPortletButton;
+import com.f1.suite.web.portal.impl.form.FormPortletField;
+import com.f1.suite.web.portal.impl.form.FormPortletListener;
+import com.f1.suite.web.portal.impl.form.FormPortletNumericRangeField;
 import com.f1.suite.web.portal.impl.visual.GraphListener;
 import com.f1.suite.web.portal.impl.visual.GraphPortlet;
 import com.f1.suite.web.portal.impl.visual.GraphPortlet.Node;
@@ -68,7 +78,9 @@ import com.f1.suite.web.tree.WebTreeContextMenuListener;
 import com.f1.suite.web.tree.WebTreeNode;
 import com.f1.suite.web.tree.impl.FastWebTree;
 import com.f1.suite.web.tree.impl.FastWebTreeColumn;
+import com.f1.utils.MH;
 import com.f1.utils.SH;
+import com.f1.utils.SingletonIterable;
 import com.f1.utils.casters.Caster_String;
 import com.f1.utils.concurrent.IdentityHashSet;
 import com.f1.utils.string.JavaExpressionParser;
@@ -132,6 +144,11 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	//should show user defined only objects
 	private boolean showUserDefinedOnlyObjects = false;
 
+	private int autoRefreshMethodsMills = -1;
+	private int autoRefreshMethodsNextRunTime = -1;
+	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+	private final Future[] pendingFuture = new Future[1];
+	
 	//DB obeject consts
 	public static final int DB_CENTER = 0;
 	public static final int DB_TABLE = 1;
@@ -518,7 +535,6 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	@Override
 	public WebMenu createMenu(FastWebTree fastWebTree, List<WebTreeNode> selected) {
 		BasicWebMenu menu = new BasicWebMenu();
-		menu.addChild(new BasicWebMenuLink("Refresh", true, "refresh"));
 		if (selected.size() == 1) {
 			WebTreeNode t = selected.get(0);
 			if (t == this.treeNodeCurCenter || this.externalCenterTreeNodesByName.containsValue(t)) {
@@ -542,13 +558,13 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 				menu.addChild(new BasicWebMenuLink("Add Index", true, "add_index"));
 				return menu;
 			} else if (t == this.treeNodeMethods && allowModification) {
+				menu.addChild(new BasicWebMenuLink("Auto Refresh", true, "auto_refresh"));
 				menu.addChild(new BasicWebMenuLink("Add Method", true, "add_method"));
 				return menu;
 			} else if (t == this.treeNodeDBOs && allowModification) {
 				menu.addChild(new BasicWebMenuLink("Add Dbo", true, "add_dbo"));
 				return menu;
-			}
-
+			} 
 		}
 		List<AmiCenterGraphNode> nodes2 = new ArrayList<AmiCenterGraphNode>(selected.size());
 		for (WebTreeNode data : selected) {
@@ -565,6 +581,14 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	public boolean formatNode(WebTreeNode node, StringBuilder sink) {
 		// TODO Auto-generated method stub
 		return false;
+	}
+	
+	public void refreshMethods() {
+		this.methodNodeByNames.clear();
+		while(treeNodeMethods.getChildrenCount() >0) {
+			treeNodeMethods.removeChild(treeNodeMethods.getChildAt(0));
+		}
+		prepareRequestToBackend("USE DS=\"AMI\" EXECUTE SHOW METHODS");
 	}
 
 	public void onContextMenuOnNodes(String action, List<AmiCenterGraphNode> nodes) {
@@ -691,8 +715,8 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 			if (data2 != null)
 				nodes.add(data2);
 		}
-		if("refresh".equals(action)) {
-			buildNodes();
+		if("auto_refresh".equals(action)) {
+			openAutoRefreshPortlet();
 			return;
 		}
 		if (SH.startsWith(action, "add")) {
@@ -844,6 +868,104 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 		this.smartErGraph.buildGraph(origNodes, allSelected);
 		this.scriptTree.build(selected);
 	}
+	
+	public void setAutoRefreshMethods(Integer t) {
+		if(autoRefreshMethodsMills == t)
+			return;
+		final Runnable task = new Runnable() {
+				@Override
+				public void run() {
+					refreshMethods();
+				}
+			};
+			
+		if(autoRefreshMethodsMills == -1) {
+			final ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(task, 0, t, TimeUnit.MILLISECONDS);
+			pendingFuture[0] = future;
+			autoRefreshMethodsMills = t;
+			return;
+		}
+			
+		autoRefreshMethodsMills = t;
+		pendingFuture[0].cancel(false); // stop the old schedule
+		if(t != -1) {
+			final Future f2 = scheduler.scheduleAtFixedRate(task, 0, t, TimeUnit.MILLISECONDS);
+			pendingFuture[0] = f2;
+		}else
+			pendingFuture[0] = null;
+		
+
+ 
+	}
+	
+	
+	private void openAutoRefreshPortlet() {
+		InputsPortlet p = autoRefreshMethodsMills == -1 ? new InputsPortlet(generateConfig(), false) : new InputsPortlet(generateConfig(), autoRefreshMethodsMills);
+		RootPortlet root = (RootPortlet) this.service.getPortletManager().getRoot();
+		int width = MH.min(500, (int) (root.getWidth() * 0.4));
+		int height = MH.min(100, (int) (root.getHeight() * 0.4));
+		getManager().showDialog("Auto Refresh Methods", p, width, height);
+	}
+	
+	public class InputsPortlet extends GridPortlet implements FormPortletListener {
+
+
+		private FormPortlet form;
+		private int autoRefreshMillis;
+		private FormPortletNumericRangeField autoRefreshField;
+		private FormPortletButton cancelButton;
+		private FormPortletButton applyButton;
+
+		public InputsPortlet(PortletConfig config, boolean enabled) {
+			super(config);
+			this.form = new FormPortlet(generateConfig());
+			this.addChild(form);
+			this.autoRefreshField = this.form.addField(new FormPortletNumericRangeField("Auto Refresh (sec): "));
+			this.autoRefreshField.setHelp("How often the center manager should automatically requery the backend to update the backend methods");
+			if(!enabled)
+				this.autoRefreshField.setSliderHidden(true).setNullable(true);
+		
+			this.form.addFormPortletListener(this);
+			this.applyButton = this.form.addButton(new FormPortletButton("Apply"));
+			this.cancelButton = this.form.addButton(new FormPortletButton("Cancel"));
+		}
+		
+		public InputsPortlet(PortletConfig config, int autoRefreshMillis) {
+			this(config, true);
+			this.autoRefreshMillis = autoRefreshMillis;
+			this.autoRefreshField.setSliderHidden(false).setNullable(true).setValue(autoRefreshMillis/1000d);
+		}
+
+		@Override
+		public void onButtonPressed(FormPortlet portlet, FormPortletButton button) {
+				if (this.cancelButton == button)
+					close();
+				else {
+					if(autoRefreshField.getValue() != null) {
+						Integer t = (int)(this.autoRefreshField.getValue() * 1000d);
+						if(t == 0) {
+							AmiCenterManagerUtils.popDialog(service, "The period needs to be greater than 0", "Error");
+							return;
+						}
+						setAutoRefreshMethods(t);
+					}else
+						setAutoRefreshMethods(-1);
+				
+				}
+				close();
+			}
+		
+
+			@Override
+			public void onFieldValueChanged(FormPortlet portlet, FormPortletField<?> field, Map<String, String> attributes) {	
+			}
+
+			@Override
+			public void onSpecialKeyPressed(FormPortlet formPortlet, FormPortletField<?> field, int keycode, int mask, int cursorPosition) {
+			}
+
+		
+	}
 
 	@Override
 	public void onCellMousedown(FastWebTree tree, WebTreeNode start, FastWebTreeColumn col) {
@@ -859,6 +981,10 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 	@Override
 	public void onClosed() {
 		this.service.getCenterGraphManager().removeListener(this);
+		if(pendingFuture[0] != null) {
+			pendingFuture[0].cancel(false);
+			pendingFuture[0] = null;
+		}
 		super.onClosed();
 	}
 
@@ -1182,7 +1308,7 @@ public class AmiWebCenterManagerPortlet extends GridPortlet implements AmiWebGra
 					if(!"AMI".equals(ds)) {
 						isDeferredQueryFinished = true;
 					}else {
-						System.out.println("AMI ds");
+						//System.out.println("AMI ds");
 					}
 				} else if (tables.size() == 1 && query.contains("DESCRIBE")) {
 					//describe [entity] [entity_name]

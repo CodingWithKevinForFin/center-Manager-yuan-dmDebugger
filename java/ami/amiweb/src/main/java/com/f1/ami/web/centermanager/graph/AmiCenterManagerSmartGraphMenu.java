@@ -60,6 +60,7 @@ public class AmiCenterManagerSmartGraphMenu {
 					menu.addChild(new BasicWebMenuLink("Add Method", true, "add_method"));
 					menu.addChild(new BasicWebMenuLink("Edit Method", true, "edit_method"));
 					menu.addChild(new BasicWebMenuLink("Delete Method", true, "delete_method"));
+					menu.addChild(new BasicWebMenuLink("Auto Refresh", true, "auto_refresh"));
 				}
 			} else if (AmiCenterGraphNode.TYPE_INDEX == type) {
 				if (allowModification) {
